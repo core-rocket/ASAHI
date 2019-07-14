@@ -6,7 +6,13 @@ from matplotlib import animation
 from matplotlib import gridspec
 
 s = serial.Serial('/dev/ttyUSB0', timeout=0.1)
+
 s.write(b's')
+
+# 初期ステータスを表示
+print(s.readline().decode())
+print(s.readline().decode())
+print(s.readline().decode())
 
 fig = plt.figure()
 
@@ -49,7 +55,7 @@ def update(i):
     p = plt.subplot(4, 2, 1)
     p.cla()
     p.set_xlim([0, 50])
-    #p.set_ylim([10.0, 40.0])
+    p.set_ylim([24.0, 28.0])
     #plt.yticks(np.arange(0.0, 40.0, 0.5))
     p.plot(temperature)
 

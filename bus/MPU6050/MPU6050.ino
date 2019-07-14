@@ -7,29 +7,86 @@
 #define MPU6050_PWR_MGMT_1		0x6b	// R/W
 #define MPU6050_ACCEL_XOUT_H	0x3b	// R
 
+namespace MPU6050 {
+	constexpr uint8_t addr			= 0x68;	// I2C addr
+	constexpr uint8_t who_am_i		= 0x75;	// R
+	constexpr uint8_t pwr_mgmt_1	= 0x6b;	// R/W
+	constexpr uint8_t accel_xout_h	= 0x3b;	// R
+
+int read(const uint8_t &reg, uint8_t *buf, const int &size){
+	int i, n, error;
+	Wire.beginTransmission(addr);
+	n = Wire.write(reg);
+	if(n != 1)
+		return -10;
+	n = Wire.endTransmission(false);	// falseでコネクションを維持
+	if(n != 0)
+		return n;
+	Wire.requestFrom(addr, size, true);	// trueでI2Cバスをread後にrelease
+	i = 0;
+	for(i=0; Wire.available() && i<size; i++){
+		buf[i] = Wire.read();
+	}
+	if(i != size)
+		return 11;
+
+	return 0; // no error
+}
+
+int write(const uint8_t &reg, const uint8_t *buf, const size_t &size){
+	int n, error;
+	Wire.beginTransmission(addr);
+	n = Wire.write(reg);
+	if(n != 1)
+		return -20;
+	n = Wire.write(buf, size);
+	if(n != size)
+		return -21;
+	error = Wire.endTransmission(true); // release i2c
+	if(error != 0)
+		return error;
+
+	return 0; // no error
+}
+
+int write_reg(const uint8_t &reg, const uint8_t &data){
+	int error;
+	error = write(reg, &data, 1);
+	return error;
+}
+
+} // namespace MPU6050
+
 void setup(){
 	int error;
+	uint8_t c;
 
 	Serial.begin(9600);
-//	Serial.println("MPU6050");
+	while(true){
+		if(Serial.available() < 0) continue;
+		if(Serial.read() == 's') break;
+	}
+
+	Serial.println("MPU6050");
 
 	Wire.begin();
 
-	Wire.beginTransmission(MPU6050_ADDR);	// 通信開始．
-	Wire.write(MPU6050_WHO_AM_I);
-	Wire.write(0x00);
-	Wire.endTransmission();					// 通信終了．データはこのタイミングで書き込まれる．
+	// 初回読み出し
+	error = MPU6050::read(MPU6050::who_am_i, &c, 1);
+	Serial.print("who_am_i=");
+	Serial.print(c);
+	Serial.print(", error=");
+	Serial.println(error);
 
-	Wire.beginTransmission(MPU6050_ADDR);
-	Wire.write(MPU6050_PWR_MGMT_1);
-	Wire.write(0x00);
-	Wire.endTransmission();
+	// 動作モード読み出し
+	error = MPU6050::read(MPU6050::pwr_mgmt_1, &c, 1);
+	Serial.print("pwr_mgmt_1=");
+	Serial.print(c);
+	Serial.print(", error=");
+	Serial.println(error);
 
-	while(true){
-		if(Serial.available() < 0) continue;
-		char c = Serial.read();
-		if(c == 's') break;
-	}
+	// 動作開始
+	MPU6050::write_reg(MPU6050::pwr_mgmt_1, 0);
 }
 
 void loop(){
