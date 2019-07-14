@@ -11,7 +11,7 @@ void setup(){
 	int error;
 
 	Serial.begin(9600);
-	Serial.println("MPU6050");
+//	Serial.println("MPU6050");
 
 	Wire.begin();
 
@@ -24,6 +24,12 @@ void setup(){
 	Wire.write(MPU6050_PWR_MGMT_1);
 	Wire.write(0x00);
 	Wire.endTransmission();
+
+	while(true){
+		if(Serial.available() < 0) continue;
+		char c = Serial.read();
+		if(c == 's') break;
+	}
 }
 
 void loop(){
