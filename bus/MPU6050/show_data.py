@@ -11,8 +11,8 @@ s.write(b's')
 
 # 初期ステータスを表示
 print(s.readline().decode())
-print(s.readline().decode())
-print(s.readline().decode())
+#print(s.readline().decode())
+#print(s.readline().decode())
 
 fig = plt.figure()
 
@@ -55,26 +55,26 @@ def update(i):
     p = plt.subplot(4, 2, 1)
     p.cla()
     p.set_xlim([0, 50])
-    p.set_ylim([24.0, 28.0])
+    p.set_ylim([10.0, 40.0])
     #plt.yticks(np.arange(0.0, 40.0, 0.5))
     p.plot(temperature)
 
     p = plt.subplot(4, 2, 3)
     p.cla()
     p.set_xlim([0, 50])
-    #p.set_ylim([-2.0, 2.0])
+    p.set_ylim([-1.0, 2.0])
     p.plot(acc_x)
 
     p = plt.subplot(4, 2, 5)
     p.cla()
     p.set_xlim([0, 50])
-    #p.set_ylim([-2.0, 2.0])
+    p.set_ylim([-1.0, 2.0])
     p.plot(acc_y)
 
     p = plt.subplot(4, 2, 7)
     p.cla()
     p.set_xlim([0, 50])
-    #p.set_ylim([-2.0, 2.0])
+    p.set_ylim([-1.0, 2.0])
     p.plot(acc_z)
 
     p = plt.subplot(4, 2, 4)
@@ -94,5 +94,5 @@ def update(i):
 
     plt.tight_layout()
 
-ani = animation.FuncAnimation(fig, update, interval=200)
+ani = animation.FuncAnimation(fig, update, interval=100)
 plt.show()
