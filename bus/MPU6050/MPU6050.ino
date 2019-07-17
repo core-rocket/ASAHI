@@ -19,6 +19,11 @@ public:
 		Write,
 	};
 
+	struct data_t {
+		int16_t acc[3];
+		int16_t temperature;
+		int16_t gyro[3];
+	} data;
 private:
 	Reg reg;		// 現在のレジスタ
 	Error error;	// エラー
@@ -79,6 +84,24 @@ public:
 		write8(val);
 		sync(stop);
 	}
+
+	void init(){
+		write8(Reg::who_am_i, 0x00);
+		write8(Reg::pwr_mgmt_1, 0x00);
+	}
+
+	const data_t& get_data(){
+		begin_reg(Reg::accel_xout_h);
+		sync(false);
+		Wire.requestFrom(addr, 14, true);
+		while(Wire.available() < 14);	// データが貯まるまで待つ
+		for(int i=0;i<3;i++)
+			data.acc[i] = read16();
+		data.temperature= read16();
+		for(int i=0;i<3;i++)
+			data.gyro[i]= read16();
+		return data;
+	}
 };
 
 MPU6050 mpu;
@@ -87,41 +110,28 @@ void setup(){
 	Serial.begin(9600);
 	Wire.begin();
 
+	// 's'が入力されるまで待つ
 	while(true){
 		if(Serial.available() < 0) continue;
 		if(Serial.read() == 's') break;
 	}
 
 	Serial.println("MPU6050");
-
-	mpu.write8(MPU6050::Reg::who_am_i, 0x00);
-	mpu.write8(MPU6050::Reg::pwr_mgmt_1, 0x00);
+	mpu.init();
 }
 
 void loop(){
-	float acc[3], gyro[3], temperature;
+	auto data = mpu.get_data();
 
-	mpu.begin_reg(MPU6050::Reg::accel_xout_h);
-	mpu.sync(false);
-
-	Wire.requestFrom(MPU6050::addr, 14, true);
-	while(Wire.available() < 14);
-
-	for(int i=0;i<3;i++)
-		acc[i] = static_cast<float>(mpu.read16()); // signedなことに注意
-	temperature = static_cast<float>(mpu.read16());
-	for(int i=0;i<3;i++)
-		gyro[i] = static_cast<float>(mpu.read16());
-	
 	for(int i=0;i<3;i++){
-		Serial.print(acc[i] / 16384.0);
+		Serial.print(static_cast<float>(data.acc[i]) / 16384.0);
 		Serial.print(" ");
 	}
 	for(int i=0;i<3;i++){
-		Serial.print(gyro[i] / 131.0);
+		Serial.print(static_cast<float>(data.gyro[i]) / 131.0);
 		Serial.print(" ");
 	}
-	Serial.println((temperature+12412.0)/340.0);
+	Serial.println((static_cast<float>(data.temperature)+12412.0)/340.0);
 
 	delay(500);
 }
