@@ -22,6 +22,22 @@ void loop(){
 	// MPU6050から加速度・温度・ジャイロデータを取得
 	auto data = mpu.get_data();
 
+	auto start = millis();
+	for(int i=0;i<10;i++){
+		data = mpu.get_data();
+	}
+	auto end = millis();
+	1度のデータ取得にかかる時間
+//	Serial.println((end-start)/10.0);
+
+	// エラーだったらリセットをかける
+	if(mpu.get_error() != MPU6050::Error::No){
+		Serial.println("error");
+		TWCR=0;
+		Wire.begin();
+		mpu.init();
+	}
+
 	// 生のデータから実際の数値を計算する
 	// TODO	この式もMPU6050クラスで扱うようにするべきか考える
 	//		この数値はMPU6050の設定で変更できるので，なんらかの方法での抽象化は行うべき．

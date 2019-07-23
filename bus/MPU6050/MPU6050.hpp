@@ -54,6 +54,11 @@ public:
 	void init(){
 		write8(Reg::who_am_i, 0x00);
 		write8(Reg::pwr_mgmt_1, 0x00);
+		error = Error::No;
+	}
+
+	inline const Error get_error() const {
+		return error;
 	}
 
 	// データ取得
