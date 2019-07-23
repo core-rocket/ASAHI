@@ -27,7 +27,7 @@ void loop(){
 		data = mpu.get_data();
 	}
 	auto end = millis();
-	1度のデータ取得にかかる時間
+	// 1度のデータ取得にかかる時間
 //	Serial.println((end-start)/10.0);
 
 	// エラーだったらリセットをかける
