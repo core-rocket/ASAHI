@@ -1,10 +1,12 @@
 #include <SoftwareSerial.h>
 
+#define BRATE	38400
+
 SoftwareSerial TWE(4, 3); // RX, TX
 
 void setup(){
-	Serial.begin(38400);
-	TWE.begin(38400);
+	Serial.begin(BRATE);
+	TWE.begin(BRATE);
 }
 
 void loop(){
