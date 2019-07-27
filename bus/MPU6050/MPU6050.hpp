@@ -66,7 +66,8 @@ public:
 //		EXT_SENS_DATA_01,
 //		...
 //		EXT_SENS_DATA_23,
-		EXT_SENS_DATA		= 0x49, // R (0~23)
+		EXT_SENS_DATA_START	= 0x49, // R (0~23)
+		EXT_SENS_DATA_END	= EXT_SENS_DATA_START + 23,
 		I2C_SLV0_DO			= 0x63, // RW
 		I2C_SLV1_DO,
 		I2C_SLV2_DO,
