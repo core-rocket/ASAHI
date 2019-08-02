@@ -100,6 +100,14 @@ public:
 #endif
 	}
 
+	inline int savail() const {
+#ifdef ARDUINO
+		return serial->available();
+#elif defined(RASPBERRY_PI)
+		return serialDataAvail(fd);
+#endif
+	}
+
 	// 現在のバッファを送信
 	bool send(const uint8_t &size){
 		uint8_t header[] = { 0xA5, 0x5A }; // binary mode
@@ -123,6 +131,14 @@ public:
 		swrite8(checksum);
 
 		return true;
+	}
+
+	size_t recv(size_t timeout=0){
+		while(true){
+			if(parser.parse8(sread8()))
+				break;
+		}
+		return parser.get_length();
 	}
 
 	// binary mode parser
