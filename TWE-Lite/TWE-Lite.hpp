@@ -21,7 +21,7 @@ class TWE_Lite {
 public:
 	// コンパイル時定数
 	constexpr static long int default_brate	= 115200;
-	constexpr static uint8_t buf_size		= 80;
+	constexpr static uint8_t buf_size		= 255;
 	constexpr static uint16_t MSB			= 0x8000;
 
 	// コンストラクタ
@@ -66,11 +66,9 @@ public:
 #ifdef RASPBERRY_PI
 		fd = serialOpen(devfile.c_str(), brate);
 		if(fd < 0) return false;
-#elif ARDUINO
+#elif defined(ARDUINO)
 		serial = new SoftwareSerial(rx, tx);
 		serial->begin(brate);
-#elif RASPBERRY_PI
-		fd = serialOpen(devfile.c_str(), brate)
 #endif
 
 		return true;
@@ -80,6 +78,9 @@ public:
 	inline void swrite8(const uint8_t &val){
 #ifdef ARDUINO
 		serial->write(val);
+#elif defined(RASPBERRY_PI)
+		serialPutchar(fd, val);
+		//std::cout << std::hex << (int)val;
 #endif
 	}
 	inline void swrite16_big(const uint16_t &val){
@@ -89,6 +90,9 @@ public:
 	inline void swrite(const uint8_t *buf, const size_t &size){
 #ifdef ARDUINO
 		serial->write(buf, size);
+#else
+		for(size_t i=0;i<size;i++)
+			swrite8(buf[i]);
 #endif
 	}
 
@@ -109,13 +113,18 @@ public:
 	}
 
 	// 現在のバッファを送信
-	bool send(const uint8_t &size){
+	bool send(const uint8_t size=80){ // 80byte以内で送信するべき
 		uint8_t header[] = { 0xA5, 0x5A }; // binary mode
-		uint8_t id = 0x78;
+		uint8_t id = 0x00;
 		uint8_t cmd_type = 0x01;
 
 		// 送信コマンド長
-		uint16_t cmd_size = MSB + static_cast<uint16_t>(size) + 2; // 簡易形式
+		uint16_t cmd_size = static_cast<uint16_t>(size);
+		// 簡易形式，拡張形式を加味した長さにする．
+		// もしかしたらこれ含めて80byte以内...？
+		cmd_size += 2; // 簡易形式
+
+		cmd_size += MSB;
 
 		// checksum
 		uint8_t checksum = id ^ cmd_type;
