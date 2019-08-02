@@ -1,53 +1,35 @@
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
+#include "../TWE-Lite.hpp"
 
-#define BRATE	38400
-
-SoftwareSerial TWE(4, 3); // RX, TX
+TWE_Lite twelite(4, 3, 38400);
 
 void setup(){
-	Serial.begin(BRATE);
-	TWE.begin(BRATE);
+	Serial.begin(38400);
+	Serial.println("setup");
+
+	twelite.init();
+	for(int i=0;i<80;i++)
+		twelite.send_buf[i] = (uint8_t)i;
+	twelite.send_buf[0] = 0x01; // なんか知らんが最初の1byteは0x00だと微妙っぽい(?)
 }
 
-void send(uint8_t id, char *str){
-	// header=A55A size=8005 id=78 cmd_type=00 11 22 33 78
-
-	uint8_t header[] = {0xA5, 0x5A};
-	uint8_t cmd_type = 0x01;
-	uint8_t *send_data = str;
-//	{0xca, 0xfe, 0xbe, 0xaf};
-	//{'h', 'o', 'g', 'e', '\0'};
-//	{0x11, 0x22, 0x33, 0x44};
-	uint8_t len = strlen(send_data);
-	constexpr uint16_t MSB = 0x8000;
-	uint16_t size = 0x8000 + len + 2;
-
-	// 送信コマンド: id, cmd_type, send_data
-	TWE.write(header[0]);
-	TWE.write(header[1]);
-	TWE.write(size >> 8);
-	TWE.write(size & 0xff);
-	TWE.write(id);
-	TWE.write(cmd_type);
-	for(int i=0;i<len;i++)
-		TWE.write(send_data[i]);
-	uint8_t checksum = id ^ cmd_type;
-	for(int i=0;i<len;i++)
-		checksum = checksum ^ send_data[i];
-	TWE.write(checksum);
-}
-
-
+// 送信するバイト数が増える程到達しにくくなる(要計測)
 
 void loop(){
-//	static uint8_t i=0x00;
-	uint8_t i = 0x01;
-	Serial.print("send[");
-	Serial.print(i);
-	send(i, "hoge");
-	Serial.println("]   done");
-	while(TWE.available())
-		Serial.print(TWE.read(), HEX);
+	static int i = 0;
+
+	Serial.print("loop ");
+
+	int num = (i % 80) + 1;
+	Serial.print(num);
+
+	twelite.send(1);
+	delay(100);
+	for(int k=0;k<3;k++){
+		twelite.send(static_cast<uint8_t>(num));
+		delay(10);
+	}
+	twelite.send(80);
 	delay(1000);
 	i++;
 }
