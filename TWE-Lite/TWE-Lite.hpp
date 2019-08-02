@@ -1,14 +1,20 @@
 #ifndef TWE_LITE_H_
 #define TWE_LITE_H_
 
-#ifdef RASPBERRY_PI
-	#include <string>
-	#include <wiringPi.h>
-	#include <wiringSerial.h>
-#elif ARDUINO
+#ifdef ARDUINO
+	// Arduino
 	#include <SoftwareSerial.h>
 #else
-	#error please define RASPBERRY_PI or ARDUINO
+	// Linux
+	#include <cstdio>
+	#include <string>
+	#ifdef _WIN32
+		#error fuck Windows
+	#elif defined(RASPBERRY_PI)
+		// Raspberry Pi
+		#include <wiringPi.h>
+		#include <wiringSerial.h>
+	#endif
 #endif
 
 class TWE_Lite {
@@ -19,11 +25,35 @@ public:
 	constexpr static uint16_t MSB			= 0x8000;
 
 	// コンストラクタ
+#ifdef ARDUINO
 	explicit TWE_Lite(const uint8_t rx, const uint8_t tx, const long int &brate) : rx(rx), tx(tx), brate(brate) {}
 	explicit TWE_Lite(const uint8_t rx, const uint8_t tx) : rx(rx), tx(tx), brate(default_brate) {}
+#else
+	explicit TWE_Lite(const std::string &devfile, const long int &brate) : devfile(devfile), brate(brate) {}
+#endif
+
+	// デストラクタ
+	~TWE_Lite(){
+#ifdef ARDUINO
+		// 特にやることなし(そもそもデストラクタが呼ばれるべきではない)
+#else
+	if(fd != 0){
+	#ifdef RASPBERRY_PI
+		serialFlush(fd);
+		serialClose(fd);
+	#else
+		std::fclose(fd);
+	#endif
+	}
+#endif
+	}
 
 	// 定数
+#ifdef ARDUINO
 	const uint8_t rx, tx;
+#else
+	const std::string devfile;
+#endif
 	const long int brate;
 
 	// publicな変数
@@ -32,31 +62,42 @@ public:
 
 	// 初期化
 	bool init(){
-		#ifdef RASPBERRY_PI
+		parser.set_buf(recv_buf);
+#ifdef RASPBERRY_PI
 		fd = serialOpen(devfile.c_str(), brate);
 		if(fd < 0) return false;
-		#elif ARDUINO
+#elif ARDUINO
 		serial = new SoftwareSerial(rx, tx);
 		serial->begin(brate);
-		#endif
+#elif RASPBERRY_PI
+		fd = serialOpen(devfile.c_str(), brate)
+#endif
 
 		return true;
 	}
 
 	// シリアル通信の抽象化
 	inline void swrite8(const uint8_t &val){
-		#ifdef ARDUINO
+#ifdef ARDUINO
 		serial->write(val);
-		#endif
+#endif
 	}
 	inline void swrite16_big(const uint16_t &val){
 		swrite8(static_cast<uint8_t>(val >> 8));
 		swrite8(static_cast<uint8_t>(val & 0xff));
 	}
 	inline void swrite(const uint8_t *buf, const size_t &size){
-		#ifdef ARDUINO
+#ifdef ARDUINO
 		serial->write(buf, size);
-		#endif
+#endif
+	}
+
+	inline uint8_t sread8(){
+#ifdef ARDUINO
+		return serial->read();
+#elif defined(RASPBERRY_PI)
+		return serialGetchar(fd);
+#endif
 	}
 
 	// 現在のバッファを送信
@@ -83,12 +124,95 @@ public:
 
 		return true;
 	}
-	// 受信してバッファに突っ込む
-	size_t recv(const size_t timeout=0);
+
+	// binary mode parser
+	class Parser {
+	public:
+		explicit Parser() : s(state::empty), length(0x0000), checksum(0x00) {}
+
+		enum class state : uint8_t {
+			empty,
+			header,
+			length,
+			length2,
+			payload,
+			checksum,
+		};
+
+		inline auto get_state() const -> state { return s; }
+		inline auto get_error() const -> state { return e; }
+		inline auto get_length() const -> const uint16_t { return length; }
+
+		inline void set_buf(uint8_t *buf){
+			payload = buf;
+		}
+
+		bool parse8(const uint8_t &b){
+			switch(s){
+			case state::empty:
+				e = state::empty;
+				if(b == 0xA5)
+					s = state::header;
+				break;
+			case state::header:
+				if(b == 0x5A)
+					s = state::length;
+				else
+					error();
+				break;
+			case state::length:
+				if(b & 0x80){
+					length = (b & 0x7F) << 8;
+					s = state::length2;
+				}else{
+					// short length mode(?)
+					error();
+				}
+				break;
+			case state::length2:
+				length += b;
+				if(length <= buf_size)
+					s = state::payload;
+				else
+					error();
+				break;
+			case state::payload:
+				payload[pos] = b;
+				checksum ^= b;
+				if(pos == length-1)
+					s = state::checksum;
+				pos++;
+				break;
+			case state::checksum:
+				if(b == checksum){
+					s = state::empty;
+					pos = 0;
+					checksum = 0x00;
+					return true;
+				}else
+					error();
+				break;
+			}
+			return false;
+		}
+	private:
+		state s, e;
+		uint16_t length; // 送信コマンドの長さ
+		uint8_t checksum;
+		uint16_t pos;
+		uint8_t *payload;
+
+		inline void error(){
+			e = s;
+			s = state::empty;
+		}
+	} parser;
 
 private:
 #ifdef ARDUINO
 	SoftwareSerial *serial = nullptr;
+#else
+	int fd = 0;
 #endif
 };
 
