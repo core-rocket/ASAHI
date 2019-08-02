@@ -135,6 +135,8 @@ public:
 
 	size_t recv(size_t timeout=0){
 		while(true){
+			if(savail() < 0)
+				return 0;
 			if(parser.parse8(sread8()))
 				break;
 		}

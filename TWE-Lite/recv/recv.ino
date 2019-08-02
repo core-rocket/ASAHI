@@ -1,26 +1,29 @@
 #include <SoftwareSerial.h>
+#include "../TWE-Lite.hpp"
 
-SoftwareSerial TWE(4, 3); // RX, TX
+TWE_Lite twe(4, 3, 38400);
+
+//SoftwareSerial TWE(4, 3); // RX, TX
 
 void setup(){
 	Serial.begin(38400);
-	TWE.begin(38400);
+	twe.init();
+//	TWE.begin(38400);
+	Serial.println("setup");
 }
 
 void loop(){
-	uint8_t buf[60];
-	int count = 0;
+//	while(true){
+//		int b = TWE.read();
+//		if(b > 0)
+//		Serial.print((char)b, HEX);
+//	}
 
+	size_t size = twe.recv();
 	Serial.print("recv: ");
-	while(TWE.available()){
-		buf[count] = TWE.read();
-		count++;
-	}
 
-	if(count > 0){
-		for(int i=0;i<count;i++)
-			Serial.print((char)buf[i]);
-	}
+	for(size_t i=0;i<size;i++)
+		Serial.print(twe.recv_buf[i], HEX);
 	Serial.println("");
 
 	delay(100);
