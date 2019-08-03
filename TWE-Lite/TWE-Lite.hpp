@@ -113,9 +113,9 @@ public:
 	}
 
 	// 現在のバッファを送信
-	bool send(const uint8_t size=80){ // 80byte以内で送信するべき
+	bool send(uint8_t id, const uint8_t size=80){ // 80byte以内で送信するべき
+		static uint8_t response_id = 0x00; // 応答ID
 		uint8_t header[] = { 0xA5, 0x5A }; // binary mode
-		uint8_t id = 0x00;
 		uint8_t cmd_type = 0x01;
 
 		// 送信コマンド長
@@ -139,12 +139,27 @@ public:
 		swrite(send_buf, size);
 		swrite8(checksum);
 
-		return true;
+		// 応答メッセージの取得
+		size_t response_size = recv();
+		if(response_size < 4)
+			return false;
+
+		if((recv_buf[0] == 0xDB) && (recv_buf[1] == 0xA1)){
+			response_id = recv_buf[2];
+			// Serial.print("id = ");
+			// Serial.println(recv_buf[2], DEC);
+
+			if(recv_buf[3] == 0x01){
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	size_t recv(size_t timeout=0){
 		while(true){
-			if(savail() < 0)
+			if(savail() <= 0)
 				return 0;
 			if(parser.parse8(sread8()))
 				break;

@@ -16,20 +16,25 @@ void setup(){
 // 送信するバイト数が増える程到達しにくくなる(要計測)
 
 void loop(){
-	static int i = 0;
-
+	static size_t loop_num = 0;
 	Serial.print("loop ");
 
-	int num = (i % 80) + 1;
-	Serial.print(num);
+	int num = (loop_num % 80) + 1;
+	Serial.println(num);
 
-	twelite.send(1);
+	if(twelite.send(0x78, 1)){	// 全ての子機に1byte送信
+		Serial.println("send success");
+	}else{
+		Serial.println("send failed");
+	}
+/*
 	delay(100);
 	for(int k=0;k<3;k++){
-		twelite.send(static_cast<uint8_t>(num));
+		twelite.send(0x78, static_cast<uint8_t>(num));
 		delay(10);
 	}
-	twelite.send(80);
-	delay(1000);
-	i++;
+	twelite.send(0x78, 80);
+*/
+	delay(100);
+	loop_num++;
 }
