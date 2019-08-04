@@ -1,22 +1,12 @@
-// BBM試験用プログラム(BBMやってないしどうせブレッドボードとかでやるだろうからBBMと呼びます)
-// 試験結果が良好であればmasterにマージすること
-
-// 試験内容: 離床判定(フライトピン動作確認), 開傘判定(高度), リーフィング判定(高度)
-
-// 留意点:
-// - BMP280は@sk2satはまだ実物を見ていないので，動作報告のある https://gist.github.com/uc-kd/38b5d8bfaaa592cda404996b461a589b を参考に書いた
-// - フライトピンはArduino nanoのD2に接続し，ピンが抜ける前後で電圧の変化が発生するようにして下さい(変化する方向は問わない)
-// - BMP280のライブラリは https://github.com/adafruit/Adafruit_BMP280_Library からダウンロードすること
-// - MsTimer2は https://github.com/PaulStoffregen/MsTimer2 からダウンロードすること
-// - LEDのピン番号は内蔵のもの(エラー用)を除き0になっているので適宜設定すること
-// - 試験に使用する高度(開傘, リーフィング解除)は適宜設定すること
-
 #include <MsTimer2.h>
 #include <Wire.h>				// i2c
 #include <Adafruit_BMP280.h>	// BMP280ライブラリ
 
+// BBM試験用高度
 #define ALTITUDE_PARACHUTE		135.0		// 開傘高度
 #define ALTITUDE_LEAFING		120.0		// リーフィング解除高度
+
+// BBM試験(2019/8/4)にて，BMP280を使って高度を推測し，それに基づいてモードの移行を行うことができることを確認
 
 // ピン設定
 namespace pin {
@@ -71,6 +61,7 @@ void setup(){
 		error();
 
 	// タイマ割り込み設定
+	// i2cはタイマ割り込みを使っているので割り込みハンドラ内でi2cアクセスをするなら多重割り込みを許可しなければならない
 	MsTimer2::set(1000 / 100, timer_handler); // 100Hzでタイマ割り込み
 //	MsTimer2::start();
 
