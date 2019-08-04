@@ -66,7 +66,7 @@ public:
 		fd = serialOpen(devfile.c_str(), brate);
 		if(fd < 0) return false;
 #elif defined(ARDUINO)
-	#ifdef USE_HARDWARE_SERIAL
+	#ifdef TWE_LITE_USE_HARDWARE_SERIAL
 		serial = &Serial;
 	#else
 		serial = new SoftwareSerial(rx, tx);
@@ -255,7 +255,7 @@ public:
 
 private:
 #ifdef ARDUINO
-	#ifdef USE_HARDWARE_SERIAL
+	#ifdef TWE_LITE_USE_HARDWARE_SERIAL
 	HardwareSerial *serial = nullptr;
 	#else
 	SoftwareSerial *serial = nullptr;
