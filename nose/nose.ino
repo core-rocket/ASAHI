@@ -15,17 +15,17 @@
 #include <Wire.h>				// i2c
 #include <Adafruit_BMP280.h>	// BMP280ライブラリ
 
-#define ALTITUDE_PARACHUTE		0.0		// 開傘高度
-#define ALTITUDE_LEAFING		0.0		// リーフィング解除高度
+#define ALTITUDE_PARACHUTE		135.0		// 開傘高度
+#define ALTITUDE_LEAFING		120.0		// リーフィング解除高度
 
 // ピン設定
 namespace pin {
 	constexpr size_t flight = 2;
 	constexpr size_t led_arduino = 13;
 	// LEDピン番号(適宜書き換えて下さい)
-	constexpr size_t led1 = 0;	// LED1
-	constexpr size_t led2 = 0;	// LED2
-	constexpr size_t led3 = 0;	// LED3
+	constexpr size_t led1 = 3;	// LED1
+	constexpr size_t led2 = 4;	// LED2
+	constexpr size_t led3 = 5;	// LED3
 }
 
 // 動作モード
@@ -55,8 +55,9 @@ const float get_altitude();		// BMP280で高度を取得
 void error();					// エラー(内蔵LED点滅)
 
 void setup(){
-	global::mode = Mode::standby;
-	//Serial.begin(9600);
+	global::launch_time = millis();
+	global::mode = Mode::launch;
+	Serial.begin(9600);
 
 	// LED初期設定
 	init_led(pin::led_arduino);
@@ -71,7 +72,7 @@ void setup(){
 
 	// タイマ割り込み設定
 	MsTimer2::set(1000 / 100, timer_handler); // 100Hzでタイマ割り込み
-	MsTimer2::start();
+//	MsTimer2::start();
 
 	// フライトピン割り込み設定
 	pinMode(pin::flight, INPUT_PULLUP);
@@ -91,6 +92,7 @@ void loop(){
 			if(time >= 6*1000){
 				digitalWrite(pin::led1, HIGH);
 				global::mode = Mode::parachute;
+				Serial.println("mode launch -> parachute");
 			}
 			break;
 		case Mode::parachute:
@@ -98,15 +100,20 @@ void loop(){
 			if(altitude >= ALTITUDE_PARACHUTE){
 				digitalWrite(pin::led2, HIGH);	// 開傘(のつもり)
 				global::mode = Mode::leafing;
+				Serial.println("mode parachute -> leafing");
 			}
 			break;
 		case Mode::leafing:
 			// リーフィング判定
 			if(altitude <= ALTITUDE_LEAFING){
 				digitalWrite(pin::led3, HIGH);	// リーフィング解除(のつもり)
+				Serial.println("leafing!");
 			}
 			break;
 	}
+	global::altitude = get_altitude();
+//	Serial.println(global::altitude);
+//	delay(100);
 }
 
 void init_led(const size_t pin){
@@ -129,7 +136,8 @@ const float get_altitude(){
 	constexpr float p_0 = 1013.0;	// 大気圧(hPa)
 	const float t = global::bmp.readTemperature();		// C
 	const float p = global::bmp.readPressure() / 100.0f;// hPa
-	return (pow(p_0/p, 1/5.257) - 1)*(t+273.15) / 0.0065;
+	const float a = (pow(p_0/p, 1/5.257) - 1)*(t+273.15) / 0.0065;
+	return a;
 }
 
 void error(){
