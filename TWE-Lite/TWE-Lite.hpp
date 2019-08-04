@@ -158,6 +158,7 @@ public:
 	}
 
 	size_t recv(size_t timeout=0){
+		serial->listen();
 		while(true){
 			if(savail() <= 0)
 				return 0;

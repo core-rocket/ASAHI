@@ -19,6 +19,7 @@ public:
 	}
 
 	int read() const {
+		serial->listen();
 		return serial->read();
 	}
 private:
