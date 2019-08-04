@@ -1,3 +1,10 @@
+#define TWE_LITE_USE_HARDWARE_SERIAL
+#include "../TWE-Lite/TWE-Lite.hpp"
+#include "GPS/GPS.hpp"
+
+// ボードレート
+#define BRATE	38400
+
 // 動作モード
 enum class Mode : char {
 	Wait,		// ウェイトモード．コマンド受領までなにもしないをする．
@@ -6,13 +13,34 @@ enum class Mode : char {
 	Descent,	// ディセントモード．開傘〜着水まで．
 };
 
+//#define NO_GPS
+//#define NO_TWE
+
 // グローバル変数
 Mode g_mode;
+#ifndef NO_GPS
+	GPS gps(5, 6);
+#endif
+#ifndef NO_TWE
+	TWE_Lite twelite(0, 1, BRATE);
+#endif
 
 // 初期化関数．一度だけ実行される．
 void setup(){
+	Serial.begin(BRATE);
+
 	//TODO: センサ初期化
+#ifndef NO_GPS
+	gps.init(BRATE);
+	delay(1000);
+#endif
+
 	//TODO: TWE-Lite初期化
+#ifndef NO_TWE
+	twelite.init();
+	twelite.send_buf[0] = 0x01;
+#endif
+
 	//TODO: 動作モードをSDカードから読み込む
 	// (動作中に瞬断して再起動する可能性がある)
 	if(g_mode != Mode::Standby)
@@ -32,5 +60,23 @@ void loop(){
 			break;
 	}
 
+#ifndef NO_GPS
+	Serial.print("GPS: ");
+	for(size_t i=0;i<500;i++){
+		const int c = gps.read();
+		if(c >= 0)
+			Serial.write((char)c);
+	}
+	Serial.println("");
+#endif
+
+#ifndef NO_TWE
 	//TODO: テレメトリ送信
+	if(twelite.send(0x78, 1)){
+		Serial.println("TWE-Lite send success");
+	}else{
+		Serial.println("TWE-Lite send failed");
+	}
+#endif
+	delay(300);
 }

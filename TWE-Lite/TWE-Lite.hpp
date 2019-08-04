@@ -161,6 +161,9 @@ public:
 	}
 
 	size_t recv(size_t timeout=0){
+#ifndef TWE_LITE_USE_HARDWARE_SERIAL
+		serial->listen();
+#endif
 		while(true){
 			if(savail() <= 0)
 				return 0;
