@@ -26,8 +26,7 @@ public:
 
 	// コンストラクタ
 #ifdef ARDUINO
-	explicit TWE_Lite(const uint8_t rx, const uint8_t tx, const long int &brate) : rx(rx), tx(tx), brate(brate) {}
-	explicit TWE_Lite(const uint8_t rx, const uint8_t tx) : rx(rx), tx(tx), brate(default_brate) {}
+	explicit TWE_Lite(const uint8_t rx, const uint8_t tx, const long int brate=default_brate) : rx(rx), tx(tx), brate(brate) {}
 #else
 	explicit TWE_Lite(const std::string &devfile, const long int &brate) : devfile(devfile), brate(brate) {}
 #endif
@@ -67,7 +66,11 @@ public:
 		fd = serialOpen(devfile.c_str(), brate);
 		if(fd < 0) return false;
 #elif defined(ARDUINO)
+	#ifdef TWE_LITE_USE_HARDWARE_SERIAL
+		serial = &Serial;
+	#else
 		serial = new SoftwareSerial(rx, tx);
+	#endif
 		serial->begin(brate);
 #endif
 
@@ -253,7 +256,11 @@ public:
 
 private:
 #ifdef ARDUINO
+	#ifdef TWE_LITE_USE_HARDWARE_SERIAL
+	HardwareSerial *serial = nullptr;
+	#else
 	SoftwareSerial *serial = nullptr;
+	#endif
 #else
 	int fd = 0;
 #endif
