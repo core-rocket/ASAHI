@@ -3,9 +3,11 @@
 
 #ifdef ARDUINO
 	// Arduino
-	#include <SoftwareSerial.h>
+	#ifdef TWE_LITE_USE_HARDWARE_SERIAL
+		#include <SoftwareSerial.h>
+	#endif
 #else
-	// Linux
+	// others
 	#include <cstdio>
 	#include <string>
 	#ifdef _WIN32
