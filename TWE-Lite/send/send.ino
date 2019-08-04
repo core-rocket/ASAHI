@@ -1,11 +1,11 @@
-//#include <SoftwareSerial.h>
+#define TWE_LITE_USE_HARDWARE_SERIAL
 #include "../TWE-Lite.hpp"
 
 TWE_Lite twelite(4, 3, 38400);
 
 void setup(){
-	Serial.begin(38400);
-	Serial.println("setup");
+//	Serial.begin(38400);
+//	Serial.println("setup");
 
 	twelite.init();
 	for(int i=0;i<80;i++)
@@ -16,25 +16,13 @@ void setup(){
 // 送信するバイト数が増える程到達しにくくなる(要計測)
 
 void loop(){
-	static size_t loop_num = 0;
-	Serial.print("loop ");
+	static uint8_t buf[] = { 'A' };
 
-	int num = (loop_num % 80) + 1;
-	Serial.println(num);
-
-	if(twelite.send(0x78, 1)){	// 全ての子機に1byte送信
-		Serial.println("send success");
+	twelite.send_buf_simple(0x78, 0x01, buf, 1);
+	if(twelite.check_send()){
+		Serial.println("\nsend success");
 	}else{
-		Serial.println("send failed");
+		Serial.println("\nsend failed");
 	}
-/*
 	delay(100);
-	for(int k=0;k<3;k++){
-		twelite.send(0x78, static_cast<uint8_t>(num));
-		delay(10);
-	}
-	twelite.send(0x78, 80);
-*/
-	delay(100);
-	loop_num++;
 }

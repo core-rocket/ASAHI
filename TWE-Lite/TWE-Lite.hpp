@@ -58,8 +58,9 @@ public:
 	const long int brate;
 
 	// publicな変数
-	uint8_t send_buf[buf_size];
-	uint8_t recv_buf[buf_size];
+	uint8_t send_buf[buf_size];	// あとで消す
+	uint8_t recv_buf[buf_size];	// あとで消す
+	uint8_t cmd_buf[buf_size];	// 送受信コマンドのバッファ
 
 	// 初期化
 	bool init(){
@@ -118,7 +119,7 @@ public:
 	}
 
 	// 現在のバッファを送信
-	bool send(uint8_t id, const uint8_t size=80){ // 80byte以内で送信するべき
+	bool send(uint8_t id, const uint8_t size){ // 80byte以内で送信するべき
 		static uint8_t response_id = 0x00; // 応答ID
 		uint8_t header[] = { 0xA5, 0x5A }; // binary mode
 		uint8_t cmd_type = 0x01;
@@ -159,6 +160,67 @@ public:
 			}
 		}
 
+		return false;
+	}
+
+	// 任意のバッファを簡易形式で送信する(typeは0x80未満任意)
+	void send_buf_simple(const uint8_t id, const uint8_t type, const void *buf, const size_t &size) const {
+		uint8_t header[] = { id, type };
+		do_send(header, 2, static_cast<const uint8_t*>(buf), size);
+	}
+
+	// 任意のバッファを拡張形式で送信する(オプション列はとりあえず無視)
+	void send_buf_extend(const uint8_t id, const uint8_t response_id, const void *buf, const size_t &size) const {
+		uint8_t header[8];
+		header[0] = id;
+		header[1] = 0xA0;
+		header[2] = response_id;
+		if(id == 0x80){ // 拡張アドレス
+			// TODO: header[3~6]にビッグエンディアンで32bitアドレスを詰める
+			header[7] = 0xFF;
+			do_send(header, 8, static_cast<const uint8_t*>(buf), size);
+		}else{
+			header[3] = 0xFF;
+			do_send(header, 4, static_cast<const uint8_t*>(buf), size);
+		}
+	}
+
+	// 送信コマンドにヘッダとチェックサムをつけて送信する(とりあえずバイナリ形式のみ)
+	inline void do_send(const uint8_t *header, const size_t &header_size, const uint8_t *buf, const size_t &size) const {
+		// チェックサム計算
+		uint8_t checksum = 0x00;
+		for(size_t i=0;i<header_size;i++)
+			checksum = checksum ^ header[i];
+		for(size_t i=0;i<size;i++)
+			checksum = checksum ^ buf[i];
+
+		// 送信コマンドサイズ
+		uint16_t cmd_size = static_cast<uint16_t>(header_size) + static_cast<uint16_t>(size);
+
+		// 送信
+		swrite8(0xA5);	// バイナリ形式ヘッダ
+		swrite8(0x5A);
+		swrite16_big(MSB + cmd_size);
+		swrite(header, header_size);
+		swrite(buf, size);
+		swrite8(checksum);
+	}
+
+	// 応答メッセージのチェック
+	inline bool check_send(){
+		const size_t msg_size = recv();
+		if(msg_size < 4)
+			return false;
+
+		if((recv_buf[0] == 0xDB) && (recv_buf[1] == 0xA1)){	// 応答メッセージか？
+			// response_id = recv_buf[2]; // 応答ID
+			// Serial.print("id = ");
+			// Serial.println(recv_buf[2], DEC);
+
+			if(recv_buf[3] == 0x01){
+				return true;			// 送信成功
+			}
+		}
 		return false;
 	}
 
