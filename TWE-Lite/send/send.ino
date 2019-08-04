@@ -18,7 +18,7 @@ void setup(){
 void loop(){
 	static uint8_t buf[] = { 'A' };
 
-	twelite.send_buf_simple(0x78, 0x01, buf, 1);
+	twelite.send_buf_extend(0x78, 0x01, buf, 1);
 	if(twelite.check_send()){
 		Serial.println("\nsend success");
 	}else{

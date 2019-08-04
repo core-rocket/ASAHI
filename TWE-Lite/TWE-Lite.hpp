@@ -169,20 +169,10 @@ public:
 		do_send(header, 2, static_cast<const uint8_t*>(buf), size);
 	}
 
-	// 任意のバッファを拡張形式で送信する(オプション列はとりあえず無視)
+	// 任意のバッファを拡張形式で送信する(拡張アドレス,オプション列はとりあえず無視)
 	void send_buf_extend(const uint8_t id, const uint8_t response_id, const void *buf, const size_t &size) const {
-		uint8_t header[8];
-		header[0] = id;
-		header[1] = 0xA0;
-		header[2] = response_id;
-		if(id == 0x80){ // 拡張アドレス
-			// TODO: header[3~6]にビッグエンディアンで32bitアドレスを詰める
-			header[7] = 0xFF;
-			do_send(header, 8, static_cast<const uint8_t*>(buf), size);
-		}else{
-			header[3] = 0xFF;
-			do_send(header, 4, static_cast<const uint8_t*>(buf), size);
-		}
+		uint8_t header[] = { id, 0xA0, response_id, 0xFF };
+		do_send(header, 4, static_cast<const uint8_t*>(buf), size);
 	}
 
 	// 送信コマンドにヘッダとチェックサムをつけて送信する(とりあえずバイナリ形式のみ)
