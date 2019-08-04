@@ -40,12 +40,16 @@ private:
 	void change_brate(const size_t &brate){
 		SoftwareSerial tmpserial(rx, tx);
 		tmpserial.begin(this->brate);
+		tmpserial.listen();
 
 		char cmd[10];
 		sprintf(cmd, "251,%u", brate);
 		send_cmd(cmd, &tmpserial);
 
+		delay(100);
+
 		serial->begin(brate);
+		serial->listen();
 		this->brate = brate;
 	}
 

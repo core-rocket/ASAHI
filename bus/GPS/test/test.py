@@ -29,7 +29,7 @@ def send_cmd(cmd):
         checksum = checksum ^ b
     cmd = b'$' + cmd
     cmd = cmd + b'*' + format(checksum, 'x').encode() + b'\r\n'
-    #print("raw cmd: ", cmd)
+    print("raw cmd: ", cmd)
     ser.write(cmd)
 
 def change_brate(brate):
