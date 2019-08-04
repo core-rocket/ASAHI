@@ -1,3 +1,4 @@
+#define TWE_LITE_USE_HARDWARE_SERIAL
 #include "../TWE-Lite/TWE-Lite.hpp"
 #include "GPS/GPS.hpp"
 
@@ -18,10 +19,10 @@ enum class Mode : char {
 // グローバル変数
 Mode g_mode;
 #ifndef NO_GPS
-	GPS gps(10, 11);
+	GPS gps(5, 6);
 #endif
 #ifndef NO_TWE
-	TWE_Lite twelite(8, 9, BRATE);
+	TWE_Lite twelite(0, 1, BRATE);
 #endif
 
 // 初期化関数．一度だけ実行される．
