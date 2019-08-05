@@ -81,7 +81,7 @@ public:
 	}
 
 	// シリアル通信の抽象化
-	inline void swrite8(const uint8_t &val){
+	inline void swrite8(const uint8_t &val) const {
 #ifdef ARDUINO
 		serial->write(val);
 #elif defined(RASPBERRY_PI)
@@ -89,11 +89,11 @@ public:
 		//std::cout << std::hex << (int)val;
 #endif
 	}
-	inline void swrite16_big(const uint16_t &val){
+	inline void swrite16_big(const uint16_t &val) const {
 		swrite8(static_cast<uint8_t>(val >> 8));
 		swrite8(static_cast<uint8_t>(val & 0xff));
 	}
-	inline void swrite(const uint8_t *buf, const size_t &size){
+	inline void swrite(const uint8_t *buf, const size_t &size) const {
 #ifdef ARDUINO
 		serial->write(buf, size);
 #else
@@ -215,9 +215,12 @@ public:
 	}
 
 	size_t recv(size_t timeout=0){
-#ifndef TWE_LITE_USE_HARDWARE_SERIAL
-		serial->listen();
-#endif
+		#ifdef ARDUINO
+			#ifndef TWE_LITE_USE_HARDWARE_SERIAL
+			serial->listen();
+			#endif
+		#endif
+
 		while(true){
 			if(savail() <= 0)
 				return 0;
