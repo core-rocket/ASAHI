@@ -22,9 +22,9 @@
 class TWE_Lite {
 public:
 	// コンパイル時定数
-	constexpr static long int default_brate	= 115200;
-	constexpr static uint8_t buf_size		= 255;
-	constexpr static uint16_t MSB			= 0x8000;
+	constexpr static long int default_brate		= 115200;
+	constexpr static uint8_t  default_buf_size	= 255;
+	constexpr static uint16_t MSB				= 0x8000;
 
 	// コンストラクタ
 #ifdef ARDUINO
@@ -57,9 +57,13 @@ public:
 #endif
 	const long int brate;
 
-	// publicな変数
-	uint8_t recv_buf[buf_size];	// あとで消す
+protected:
+	// 内部送信バッファ
+	uint8_t send_buf_internal[default_buf_size];
+public:
+	uint8_t recv_buf[default_buf_size];
 
+public:
 	// 初期化
 	bool init(){
 		// プラットフォーム依存の初期化
@@ -74,8 +78,6 @@ public:
 		#endif
 		serial->begin(brate);
 #endif
-
-		parser.set_buf(recv_buf);
 
 		return true;
 	}
@@ -177,6 +179,8 @@ public:
 			#endif
 		#endif
 
+		parser.set_buf(recv_buf, default_buf_size);
+
 		if(try_recv(timeout))
 			return parser.get_length();
 		return 0;
@@ -217,7 +221,7 @@ public:
 	// parse8()がtrueを返したらパース完了(checksumも合っている)
 	class Parser {
 	public:
-		explicit Parser() : s(state::empty), cmd_length(0x0000), checksum(0x00) {}
+		explicit Parser() : s(state::empty), cmd_length(0x0000), checksum(0x00), payload(nullptr) {}
 
 		// 送信コマンドの処理状態
 		enum class cmd : uint8_t {
@@ -256,8 +260,9 @@ public:
 		inline auto get_my_ext_addr() const -> uint32_t { return to_ext_addr; }
 		inline auto get_LQI() const -> uint8_t { return LQI; }
 
-		inline void set_buf(uint8_t *buf){
+		inline void set_buf(uint8_t *buf, const size_t &size){
 			payload = buf;
+			payload_bufsize = size;
 		}
 
 		// 1byteずつパースする
@@ -295,7 +300,8 @@ public:
 				//std::cout
 				//	<< "payload[" << std::dec << (uint32_t) payload_pos << "] = "
 				//	<< std::hex << (uint32_t)b << std::endl;
-				payload[payload_pos] = b;
+				if(payload != nullptr && payload_pos >= payload_bufsize)
+					payload[payload_pos] = b;
 				payload_pos++;
 				break;
 			case cmd::response_id:
@@ -358,7 +364,7 @@ public:
 				break;
 			case state::length2:
 				cmd_length += b;
-				if(cmd_length <= buf_size){
+				if(cmd_length <= default_buf_size){
 					s = state::cmd;
 					c = cmd::from_id;
 				}else
@@ -400,6 +406,7 @@ public:
 		uint16_t payload_length;	// 実際の受信データ長
 
 		uint8_t *payload;
+		size_t payload_bufsize = 0;
 
 		inline void error(){
 			e = s;
