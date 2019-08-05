@@ -14,7 +14,7 @@ int main(int argc, char **argv){
 		for(size_t i=0;i<size;i++){
 			std::cout << std::hex << (uint32_t)twelite.recv_buf[i];
 		}
-		std::cout << ", LQI = "<< std::dec << (unsigned)twelite.recv_buf[11];
+	//	std::cout << ", LQI = "<< std::dec << (unsigned)twelite.recv_buf[11];
 		std::cout << std::endl;
 	}
 
