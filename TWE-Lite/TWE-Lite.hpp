@@ -178,7 +178,7 @@ public:
 		#endif
 
 		if(try_recv(timeout))
-			return parser.get_length();
+			return parser.get_cmd_length();
 		return 0;
 	}
 
@@ -202,30 +202,68 @@ public:
 		return parser.parse8(sread8());
 	}
 
-	// バイナリ形式のパーサ(1byteずつパースする)
+	// 受信データのパーサ(1byteずつパースする)
 	// parse8()がtrueを返したらパース完了(checksumも合っている)
 	class Parser {
 	public:
-		explicit Parser() : s(state::empty), length(0x0000), checksum(0x00) {}
+		explicit Parser() : s(state::empty), cmd_length(0x0000), checksum(0x00) {}
 
 		enum class state : uint8_t {
 			empty,		// 受信待ち
 			header,		// ヘッダ(0xA5, 0x5A)
 			length,		// 送信コマンド長(上位8bit)
 			length2,	// 送信コマンド長(下位8bit)
-			payload,	// 送信コマンド
+			cmd,		// 送信コマンド
 			checksum,	// checksum
 		};
-
+/*
+		enum class cmd : uint8_t {
+			id,			// 送信元論理ID
+			flag,		// 0x00~0x80なら簡易形式, 0xA0なら拡張形式
+			payload
+			// 以下は拡張形式のみ
+			response_id,
+			from_addr,
+			to_addr,
+			LQI,
+			length
+		};
+*/
 		inline auto get_state() const -> state { return s; }
 		inline auto get_error() const -> state { return e; }
-		inline auto get_length() const -> const uint16_t { return length; }
+		inline auto get_cmd_length() const -> const uint16_t { return cmd_length; }
 
 		inline void set_buf(uint8_t *buf){
 			payload = buf;
 		}
-
+/*
+		// 送信コマンドのパース
+		inline void parse_cmd(const uint8_t &b){
+			switch(s_cmd){
+			case cmd::id:
+				id = b;
+				s_cmd = cmd::flag;
+				break;
+			case cmd::flag:
+				if(b != 0xA0){ // 簡易形式
+					cmd_type = b;
+					s_cmd = cmd::payload;
+				}
+				break;
+			case cmd::payload:
+				payload[pos] = b;
+				pos++;
+				break;
+			}
+		}
+*/
+		// 1byteずつパースする
 		bool parse8(const uint8_t &b){
+			parse8_binary(b);
+		}
+
+		// バイナリ形式のパース
+		inline bool parse8_binary(const uint8_t &b){
 			switch(s){
 			case state::empty:
 				e = state::empty;
@@ -240,7 +278,7 @@ public:
 				break;
 			case state::length:
 				if(b & 0x80){
-					length = (b & 0x7F) << 8;
+					cmd_length = (b & 0x7F) << 8;
 					s = state::length2;
 				}else{
 					// short length mode(?)
@@ -248,23 +286,23 @@ public:
 				}
 				break;
 			case state::length2:
-				length += b;
-				if(length <= buf_size)
-					s = state::payload;
+				cmd_length += b;
+				if(cmd_length <= buf_size)
+					s = state::cmd;
 				else
 					error();
 				break;
-			case state::payload:
-				payload[pos] = b;
+			case state::cmd:
+				payload[cmd_pos] = b;
 				checksum ^= b;
-				if(pos == length-1)
+				if(cmd_pos == cmd_length-1)
 					s = state::checksum;
-				pos++;
+				cmd_pos++;
 				break;
 			case state::checksum:
 				if(b == checksum){
 					s = state::empty;
-					pos = 0;
+					cmd_pos = 0;
 					checksum = 0x00;
 					return true;
 				}else
@@ -275,9 +313,9 @@ public:
 		}
 	private:
 		state s, e;
-		uint16_t length; // 送信コマンドの長さ
+		uint16_t cmd_length; // 送信コマンドの長さ
 		uint8_t checksum;
-		uint16_t pos;
+		uint16_t cmd_pos;
 		uint8_t *payload;
 
 		inline void error(){
