@@ -178,7 +178,7 @@ public:
 		#endif
 
 		if(try_recv(timeout))
-			return parser.get_cmd_length();
+			return parser.get_length();
 		return 0;
 	}
 
@@ -233,6 +233,7 @@ public:
 		inline auto get_state() const -> state { return s; }
 		inline auto get_error() const -> state { return e; }
 		inline auto get_cmd_length() const -> const uint16_t { return cmd_length; }
+		inline auto get_length() const -> uint16_t { return payload_length; }
 
 		inline void set_buf(uint8_t *buf){
 			payload = buf;
@@ -251,7 +252,7 @@ public:
 			static uint32_t from_ext_addr = 0x00;
 			static uint32_t to_ext_addr = 0x00;
 			static uint8_t LQI = 0x00;
-			static uint16_t length = 0x00;
+			//static uint16_t length = 0x00;
 
 			static uint8_t addr_pos = 0;
 			static bool length_pos = 0;
@@ -268,13 +269,14 @@ public:
 				if(b != 0xA0){ // 簡易形式
 					cmd_type = b; // コマンド種別
 					c = cmd::payload;
+					payload_length = cmd_length - 2;
 					//std::cout << "simple format" << std::endl;
 				}else{
 					//response_id		= 0x00;
 					from_ext_addr	= 0x00;
 					to_ext_addr		= 0x00;
 					//LQI				= 0x00;
-					length			= 0x00;
+					//payload_length	= 0x00;
 					addr_pos		= 0x00;
 					//length_pos		= 0;
 					c = cmd::response_id; // 拡張形式
@@ -312,9 +314,9 @@ public:
 				c = cmd::length;
 				break;
 			case cmd::length:
-				if(!length_pos) length = b << 8;
+				if(!length_pos) payload_length = b << 8;
 				else{
-					length += b;
+					payload_length += b;
 					//std::cout << "length = " << std::dec << length << std::endl;
 					c = cmd::payload;
 				}
@@ -379,6 +381,9 @@ public:
 		uint16_t cmd_length; // 送信コマンドの長さ
 		uint8_t checksum;
 		uint16_t cmd_pos;
+
+		uint16_t payload_length;
+
 		uint8_t *payload;
 
 		inline void error(){
