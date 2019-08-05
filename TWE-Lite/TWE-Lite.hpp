@@ -3,7 +3,7 @@
 
 #ifdef ARDUINO
 	// Arduino
-	#ifdef TWE_LITE_USE_HARDWARE_SERIAL
+	#ifndef TWE_LITE_USE_HARDWARE_SERIAL
 		#include <SoftwareSerial.h>
 	#endif
 #else
@@ -78,7 +78,6 @@ public:
 		#endif
 		serial->begin(brate);
 #endif
-
 		return true;
 	}
 
@@ -155,16 +154,22 @@ public:
 
 	// 応答メッセージのチェック
 	inline bool check_send(){
-		if(recv() != 1)
+		if(recv(1000) != 1)
 			return false;
 
 		if(!is_response())			// 応答メッセージか？
 			return false;
-		else
+		else{
 //			std::cout << "response("
 //				<< std::dec << (uint32_t)response_id()
 //				<< ")"
 //				<< std::endl;
+			//Serial.print("\r\nresponse_id: ");
+			//Serial.println(response_id(), DEC);
+		}
+
+		//Serial.print("status: ");
+		//Serial.println(recv_buf[0], HEX);
 
 		if(recv_buf[0] == 0x01)		// 送信成功
 			return true;
@@ -172,7 +177,7 @@ public:
 		return false;
 	}
 
-	// 受信する(成功時送信コマンド長を返す)
+	// 受信する(成功時受信バイト数を返す)
 	const size_t recv(const size_t timeout=100){
 		#ifdef ARDUINO
 			#ifndef TWE_LITE_USE_HARDWARE_SERIAL
@@ -270,7 +275,7 @@ public:
 
 		// 1byteずつパースする
 		bool parse8(const uint8_t &b){
-			parse8_binary(b);
+			return parse8_binary(b);
 		}
 
 		// 送信コマンドのパース
@@ -308,7 +313,12 @@ public:
 				//std::cout
 				//	<< "payload[" << std::dec << (uint32_t) payload_pos << "] = "
 				//	<< std::hex << (uint32_t)b << std::endl;
-				if(payload != nullptr && payload_pos >= payload_bufsize)
+				//Serial.print("payload[");
+				//Serial.print(payload_pos, DEC);
+				//Serial.print("] = ");
+				//Serial.println(b, HEX);
+
+				if(payload != nullptr && payload_pos < payload_bufsize)
 					payload[payload_pos] = b;
 				payload_pos++;
 				break;

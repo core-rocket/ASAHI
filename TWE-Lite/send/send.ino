@@ -1,11 +1,11 @@
-#define TWE_LITE_USE_HARDWARE_SERIAL
+//#define TWE_LITE_USE_HARDWARE_SERIAL
 #include "../TWE-Lite.hpp"
 
 TWE_Lite twelite(4, 3, 38400);
 
 void setup(){
-//	Serial.begin(38400);
-//	Serial.println("setup");
+	Serial.begin(38400);
+	Serial.println("setup");
 
 	twelite.init();
 }
@@ -26,6 +26,12 @@ void loop(){
 		Serial.println("\r\nsend failed");
 	}
 
+//	while(twelite.savail()){
+//		Serial.print(twelite.sread8(), HEX);
+//		Serial.write(" ");
+//	}
+//	Serial.println("");
+
 	num++;
-	delay(100);
+	delay(300);
 }
