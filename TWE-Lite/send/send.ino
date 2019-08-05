@@ -1,40 +1,54 @@
-//#include <SoftwareSerial.h>
+#define TWE_LITE_USE_HARDWARE_SERIAL
 #include "../TWE-Lite.hpp"
 
 TWE_Lite twelite(4, 3, 38400);
+
+struct Hoge {
+	uint8_t u8;
+	uint16_t u16;
+	char str[5];
+}__attribute__((__packed__));
 
 void setup(){
 	Serial.begin(38400);
 	Serial.println("setup");
 
 	twelite.init();
-	for(int i=0;i<80;i++)
-		twelite.send_buf[i] = (uint8_t)i;
-	twelite.send_buf[0] = 0x01; // なんか知らんが最初の1byteは0x00だと微妙っぽい(?)
+
+	Hoge hoge;
+	hoge.u8 = 0xaa;
+	hoge.u16= 0xbeaf;
+	hoge.str[0] = 'h';
+	hoge.str[1] = 'e';
+	hoge.str[2] = 'l';
+	hoge.str[3] = 'l';
+	hoge.str[4] = 'o';
+	twelite.send_simple(0x01, 0x02, hoge);
+	while(true);
 }
 
 // 送信するバイト数が増える程到達しにくくなる(要計測)
 
 void loop(){
-	static size_t loop_num = 0;
-	Serial.print("loop ");
+	static size_t num = 0;
+	static uint8_t buf[] = { 'A' };
 
-	int num = (loop_num % 80) + 1;
-	Serial.println(num);
+	if(num % 2 == 0)
+		twelite.send_buf_simple(0x01, 0x02, buf, 1);
+	else
+		twelite.send_buf_extend(0x01, 0x01, buf, 1);
 
-	if(twelite.send(0x78, 1)){	// 全ての子機に1byte送信
-		Serial.println("send success");
+	// response message check
+check:
+	auto ret = twelite.check_send();
+	if(ret < 0) goto check;
+
+	if(ret){
+		Serial.println("\r\nsend success");
 	}else{
-		Serial.println("send failed");
+		Serial.println("\r\nsend failed");
 	}
-/*
-	delay(100);
-	for(int k=0;k<3;k++){
-		twelite.send(0x78, static_cast<uint8_t>(num));
-		delay(10);
-	}
-	twelite.send(0x78, 80);
-*/
-	delay(100);
-	loop_num++;
+
+	num++;
+	delay(300);
 }
