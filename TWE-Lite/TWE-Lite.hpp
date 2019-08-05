@@ -119,6 +119,16 @@ public:
 #endif
 	}
 
+	template<typename T>
+	void send_simple(const uint8_t id, const uint8_t type, const T &data){
+		send_buf_simple(id, type, &data, sizeof(T));
+	};
+
+	template<typename T>
+	void send_extend(const uint8_t id, const uint8_t response_id, const T &data){
+		send_buf_extend(id, response_id, &data, sizeof(T));
+	};
+
 	// 任意のバッファを簡易形式で送信する(typeは0x80未満任意)
 	void send_buf_simple(const uint8_t id, const uint8_t type, const void *buf, const size_t &size) const {
 		uint8_t header[] = { id, type };

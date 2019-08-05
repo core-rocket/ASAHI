@@ -3,11 +3,28 @@
 
 TWE_Lite twelite(4, 3, 38400);
 
+struct Hoge {
+	uint8_t u8;
+	uint16_t u16;
+	char str[5];
+}__attribute__((__packed__));
+
 void setup(){
 	Serial.begin(38400);
 	Serial.println("setup");
 
 	twelite.init();
+
+	Hoge hoge;
+	hoge.u8 = 0xaa;
+	hoge.u16= 0xbeaf;
+	hoge.str[0] = 'h';
+	hoge.str[1] = 'e';
+	hoge.str[2] = 'l';
+	hoge.str[3] = 'l';
+	hoge.str[4] = 'o';
+	twelite.send_simple(0x01, 0x02, hoge);
+	while(true);
 }
 
 // 送信するバイト数が増える程到達しにくくなる(要計測)
