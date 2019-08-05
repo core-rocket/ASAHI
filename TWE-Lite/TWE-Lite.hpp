@@ -58,9 +58,7 @@ public:
 	const long int brate;
 
 	// publicな変数
-	uint8_t send_buf[buf_size];	// あとで消す
 	uint8_t recv_buf[buf_size];	// あとで消す
-	uint8_t cmd_buf[buf_size];	// 送受信コマンドのバッファ
 
 	// 初期化
 	bool init(){
@@ -116,51 +114,6 @@ public:
 #elif defined(RASPBERRY_PI)
 		return serialDataAvail(fd);
 #endif
-	}
-
-	// 現在のバッファを送信
-	bool send(uint8_t id, const uint8_t size){ // 80byte以内で送信するべき
-		static uint8_t response_id = 0x00; // 応答ID
-		uint8_t header[] = { 0xA5, 0x5A }; // binary mode
-		uint8_t cmd_type = 0x01;
-
-		// 送信コマンド長
-		uint16_t cmd_size = static_cast<uint16_t>(size);
-		// 簡易形式，拡張形式を加味した長さにする．
-		// もしかしたらこれ含めて80byte以内...？
-		cmd_size += 2; // 簡易形式
-
-		cmd_size += MSB;
-
-		// checksum
-		uint8_t checksum = id ^ cmd_type;
-		for(uint8_t i=0;i<size;i++)
-			checksum = checksum ^ send_buf[i];
-
-		// 送信
-		swrite(header, 2);
-		swrite16_big(cmd_size);
-		swrite8(id);
-		swrite8(cmd_type);
-		swrite(send_buf, size);
-		swrite8(checksum);
-
-		// 応答メッセージの取得
-		size_t response_size = recv();
-		if(response_size < 4)
-			return false;
-
-		if((recv_buf[0] == 0xDB) && (recv_buf[1] == 0xA1)){
-			response_id = recv_buf[2];
-			// Serial.print("id = ");
-			// Serial.println(recv_buf[2], DEC);
-
-			if(recv_buf[3] == 0x01){
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	// 任意のバッファを簡易形式で送信する(typeは0x80未満任意)

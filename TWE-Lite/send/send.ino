@@ -8,21 +8,24 @@ void setup(){
 //	Serial.println("setup");
 
 	twelite.init();
-	for(int i=0;i<80;i++)
-		twelite.send_buf[i] = (uint8_t)i;
-	twelite.send_buf[0] = 0x01; // なんか知らんが最初の1byteは0x00だと微妙っぽい(?)
 }
 
 // 送信するバイト数が増える程到達しにくくなる(要計測)
 
 void loop(){
+	static size_t num = 0;
 	static uint8_t buf[] = { 'A' };
 
-	twelite.send_buf_extend(0x78, 0x01, buf, 1);
+	if(num % 2 == 0)
+		twelite.send_buf_simple(0x78, 0x01, buf, 1);
+	else
+		twelite.send_buf_extend(0x78, 0x01, buf, 1);
 	if(twelite.check_send()){
-		Serial.println("\nsend success");
+		Serial.println("\r\nsend success");
 	}else{
-		Serial.println("\nsend failed");
+		Serial.println("\r\nsend failed");
 	}
+
+	num++;
 	delay(100);
 }
