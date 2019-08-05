@@ -4,8 +4,29 @@
 
 TWE_Lite twelite("/dev/ttyUSB0", 115200);
 
+struct Hoge {
+	uint8_t u8;
+	uint16_t u16;
+	char str[5];
+}__attribute__((__packed__));
+
 int main(int argc, char **argv){
 	twelite.init();
+
+	Hoge hoge;
+
+	while(true){
+		if(twelite.recv(hoge) != 0){
+			std::cout
+				<< "u8 = " << std::hex << (uint32_t)hoge.u8 << std::endl
+				<< "u16=" << std::hex << hoge.u16 << std::endl
+				<< "str:";
+			for(size_t i=0;i<5;i++)
+				std::cout << hoge.str[i];
+			std::cout << std::endl;
+		}
+	}
+
 
 	while(true){
 		size_t size = twelite.recv();

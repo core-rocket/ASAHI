@@ -176,6 +176,14 @@ public:
 		return 0;
 	}
 
+	template<typename T>
+	const size_t recv(T &data, const size_t timeout=100){
+		parser.set_buf(reinterpret_cast<uint8_t*>(&data), sizeof(T));
+		if(try_recv(timeout))
+			return parser.get_length();
+		return 0;
+	}
+
 	// 受信する(成功時受信バイト数を返す)
 	const size_t recv(const size_t timeout=100){
 		#ifdef ARDUINO
