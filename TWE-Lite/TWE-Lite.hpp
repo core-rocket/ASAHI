@@ -155,19 +155,20 @@ public:
 
 	// 応答メッセージのチェック
 	inline bool check_send(){
-		const size_t msg_size = recv();
-		if(msg_size < 4)
+		if(recv() != 1)
 			return false;
 
-		if((recv_buf[0] == 0xDB) && (recv_buf[1] == 0xA1)){	// 応答メッセージか？
-			// response_id = recv_buf[2]; // 応答ID
-			// Serial.print("id = ");
-			// Serial.println(recv_buf[2], DEC);
+		if(!is_response())			// 応答メッセージか？
+			return false;
+		else
+//			std::cout << "response("
+//				<< std::dec << (uint32_t)response_id()
+//				<< ")"
+//				<< std::endl;
 
-			if(recv_buf[3] == 0x01){
-				return true;			// 送信成功
-			}
-		}
+		if(recv_buf[0] == 0x01)		// 送信成功
+			return true;
+
 		return false;
 	}
 
@@ -188,6 +189,7 @@ public:
 
 	inline const bool is_simple()  const { return parser.is_simple();}
 	inline const bool is_extended()const { return parser.is_extended();}
+	inline const bool is_response()const { return parser.is_response();}
 
 	inline const uint8_t from_id()    const { return parser.get_from_id(); }
 	inline const uint8_t cmd_type()   const { return parser.get_cmd_type();}
@@ -250,6 +252,7 @@ public:
 
 		inline auto is_simple() const -> bool { return flag_simple; }
 		inline auto is_extended() const -> bool { return !flag_simple; }
+		inline auto is_response() const -> bool { return flag_response; }
 
 		inline auto get_cmd_length() const -> const uint16_t { return cmd_length; }
 		inline auto get_length() const -> uint16_t { return payload_length; }
@@ -283,17 +286,22 @@ public:
 				c = cmd::flag;
 				break;
 			case cmd::flag:
-				if(b != 0xA0){
-					flag_simple = true;		// 簡易形式
-					cmd_type = b;			// コマンド種別
-					payload_length = cmd_length - 2;
-					c = cmd::payload;
-				}else{
-					flag_simple = false;	// 拡張形式
+				flag_response = false;
+				if(b == 0xA0){				// 拡張形式
+					flag_simple = false;
 					from_ext_addr	= 0x00;
 					to_ext_addr		= 0x00;
 					addr_pos		= 0x00;
 					c = cmd::response_id;
+				}else if(b == 0xA1){		// 応答メッセージ
+					flag_response = true;
+					payload_length = 1;
+					c = cmd::response_id;
+				}else{						// 簡易形式
+					flag_simple = true;
+					cmd_type = b;			// コマンド種別
+					payload_length = cmd_length - 2;
+					c = cmd::payload;
 				}
 				break;
 			case cmd::payload:
@@ -307,6 +315,8 @@ public:
 			case cmd::response_id:
 				response_id = b;
 				c = cmd::addr;
+				if(flag_response)	// 応答メッセージ
+					c = cmd::payload;
 				break;
 			case cmd::addr:
 				// 0 1 2 3  4 5 6 7
@@ -397,6 +407,7 @@ public:
 		uint16_t cmd_pos;
 
 		bool     flag_simple;		// 簡易形式かどうか
+		bool     flag_response;		// 応答メッセージかどうか
 		uint8_t  from_id;			// 送信元論理ID
 		uint8_t  cmd_type;			// コマンド種別(簡易形式のみ)
 		uint8_t  response_id;		// 送信元で指定した応答ID(拡張形式のみ)
