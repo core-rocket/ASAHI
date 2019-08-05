@@ -182,6 +182,17 @@ public:
 		return 0;
 	}
 
+	inline const bool is_simple()  const { return parser.is_simple();}
+	inline const bool is_extended()const { return parser.is_extended();}
+
+	inline const uint8_t from_id()    const { return parser.get_from_id(); }
+	inline const uint8_t cmd_type()   const { return parser.get_cmd_type();}
+	inline const uint8_t response_id()const { return parser.get_response_id();}
+	inline const uint8_t LQI()        const { return parser.get_LQI(); }
+
+	inline const uint32_t from_ext_addr() const { return parser.get_from_ext_addr();}
+	inline const uint32_t my_ext_addr()   const { return parser.get_my_ext_addr();}
+
 	// 受信成功時trueを返す
 	// 受信失敗, タイムアウト時falseを返す
 	inline auto try_recv(const size_t &timeout) -> bool {
@@ -232,8 +243,18 @@ public:
 
 		inline auto get_state() const -> state { return s; }
 		inline auto get_error() const -> state { return e; }
+
+		inline auto is_simple() const -> bool { return flag_simple; }
+		inline auto is_extended() const -> bool { return !flag_simple; }
+
 		inline auto get_cmd_length() const -> const uint16_t { return cmd_length; }
 		inline auto get_length() const -> uint16_t { return payload_length; }
+		inline auto get_from_id() const -> uint8_t { return from_id; }
+		inline auto get_cmd_type() const -> uint8_t{ return cmd_type;}
+		inline auto get_response_id() const -> uint8_t { return response_id; }
+		inline auto get_from_ext_addr() const -> uint32_t { return from_ext_addr; }
+		inline auto get_my_ext_addr() const -> uint32_t { return to_ext_addr; }
+		inline auto get_LQI() const -> uint8_t { return LQI; }
 
 		inline void set_buf(uint8_t *buf){
 			payload = buf;
@@ -246,14 +267,6 @@ public:
 
 		// 送信コマンドのパース
 		inline void parse_cmd(const uint8_t &b){
-			static uint8_t from_id = 0x00;
-			static uint8_t cmd_type= 0x00;
-			static uint8_t response_id = 0x00;
-			static uint32_t from_ext_addr = 0x00;
-			static uint32_t to_ext_addr = 0x00;
-			static uint8_t LQI = 0x00;
-			//static uint16_t length = 0x00;
-
 			static uint8_t addr_pos = 0;
 			static bool length_pos = 0;
 			static uint8_t payload_pos = 0;
@@ -265,22 +278,17 @@ public:
 				c = cmd::flag;
 				break;
 			case cmd::flag:
-				//std::cout << std::endl;
-				if(b != 0xA0){ // 簡易形式
-					cmd_type = b; // コマンド種別
-					c = cmd::payload;
+				if(b != 0xA0){
+					flag_simple = true;		// 簡易形式
+					cmd_type = b;			// コマンド種別
 					payload_length = cmd_length - 2;
-					//std::cout << "simple format" << std::endl;
+					c = cmd::payload;
 				}else{
-					//response_id		= 0x00;
+					flag_simple = false;	// 拡張形式
 					from_ext_addr	= 0x00;
 					to_ext_addr		= 0x00;
-					//LQI				= 0x00;
-					//payload_length	= 0x00;
 					addr_pos		= 0x00;
-					//length_pos		= 0;
-					c = cmd::response_id; // 拡張形式
-					//std::cout << "extended format" << std::endl;
+					c = cmd::response_id;
 				}
 				break;
 			case cmd::payload:
@@ -379,10 +387,17 @@ public:
 		cmd c;
 		state s, e;
 		uint16_t cmd_length; // 送信コマンドの長さ
-		uint8_t checksum;
+		uint8_t  checksum;
 		uint16_t cmd_pos;
 
-		uint16_t payload_length;
+		bool     flag_simple;		// 簡易形式かどうか
+		uint8_t  from_id;			// 送信元論理ID
+		uint8_t  cmd_type;			// コマンド種別(簡易形式のみ)
+		uint8_t  response_id;		// 送信元で指定した応答ID(拡張形式のみ)
+		uint32_t from_ext_addr;		// 送信元拡張アドレス(拡張形式のみ)
+		uint32_t to_ext_addr;		// 送信先拡張アドレス(拡張形式のみ)．論理IDで指定時は0xFFFFFFFF
+		uint8_t	 LQI;				// 通信品質
+		uint16_t payload_length;	// 実際の受信データ長
 
 		uint8_t *payload;
 
