@@ -170,7 +170,7 @@ public:
 	}
 
 	// 受信する(成功時送信コマンド長を返す)
-	const size_t recv(const size_t timeout=0){
+	const size_t recv(const size_t timeout=100){
 		#ifdef ARDUINO
 			#ifndef TWE_LITE_USE_HARDWARE_SERIAL
 			serial->listen();
