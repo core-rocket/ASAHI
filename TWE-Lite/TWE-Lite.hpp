@@ -62,18 +62,20 @@ public:
 
 	// 初期化
 	bool init(){
-		parser.set_buf(recv_buf);
-#ifdef RASPBERRY_PI
-		fd = serialOpen(devfile.c_str(), brate);
-		if(fd < 0) return false;
-#elif defined(ARDUINO)
-	#ifdef TWE_LITE_USE_HARDWARE_SERIAL
-		serial = &Serial;
-	#else
-		serial = new SoftwareSerial(rx, tx);
-	#endif
+		// プラットフォーム依存の初期化
+		#ifdef RASPBERRY_PI
+			fd = serialOpen(devfile.c_str(), brate);
+			if(fd < 0) return false;
+		#elif defined(ARDUINO)
+			#ifdef TWE_LITE_USE_HARDWARE_SERIAL
+				serial = &Serial;
+			#else
+				serial = new SoftwareSerial(rx, tx);
+		#endif
 		serial->begin(brate);
 #endif
+
+		parser.set_buf(recv_buf);
 
 		return true;
 	}
@@ -167,34 +169,52 @@ public:
 		return false;
 	}
 
-	size_t recv(size_t timeout=0){
+	// 受信する(成功時送信コマンド長を返す)
+	const size_t recv(const size_t timeout=0){
 		#ifdef ARDUINO
 			#ifndef TWE_LITE_USE_HARDWARE_SERIAL
 			serial->listen();
 			#endif
 		#endif
 
-		while(true){
-			if(savail() <= 0)
-				return 0;
-			if(parser.parse8(sread8()))
-				break;
-		}
-		return parser.get_length();
+		if(try_recv(timeout))
+			return parser.get_length();
+		return 0;
 	}
 
-	// binary mode parser
+	// 受信成功時trueを返す
+	// 受信失敗, タイムアウト時falseを返す
+	inline auto try_recv(const size_t &timeout) -> bool {
+		const size_t size = savail();
+		if(size <= 0) return false;
+		const auto start = millis();	// TODO: Arduino,Raspberry Pi以外では使えない
+		for(size_t i=0;i<size;i++){
+			if(parser.parse8(sread8()))
+				return true;
+			if((millis() - start) >= timeout)
+				break;
+		}
+		return false;
+	}
+
+	// 1byte受け取って受信成功したらtrueを返す
+	inline auto try_recv8() -> bool {
+		return parser.parse8(sread8());
+	}
+
+	// バイナリ形式のパーサ(1byteずつパースする)
+	// parse8()がtrueを返したらパース完了(checksumも合っている)
 	class Parser {
 	public:
 		explicit Parser() : s(state::empty), length(0x0000), checksum(0x00) {}
 
 		enum class state : uint8_t {
-			empty,
-			header,
-			length,
-			length2,
-			payload,
-			checksum,
+			empty,		// 受信待ち
+			header,		// ヘッダ(0xA5, 0x5A)
+			length,		// 送信コマンド長(上位8bit)
+			length2,	// 送信コマンド長(下位8bit)
+			payload,	// 送信コマンド
+			checksum,	// checksum
 		};
 
 		inline auto get_state() const -> state { return s; }
