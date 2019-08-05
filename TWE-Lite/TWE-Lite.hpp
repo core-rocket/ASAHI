@@ -153,28 +153,17 @@ public:
 	}
 
 	// 応答メッセージのチェック
-	inline bool check_send(){
-		if(recv(1000) != 1)
-			return false;
+	inline int check_send(){
+		if(recv(100) != 1)
+			return -1;
 
 		if(!is_response())			// 応答メッセージか？
-			return false;
-		else{
-//			std::cout << "response("
-//				<< std::dec << (uint32_t)response_id()
-//				<< ")"
-//				<< std::endl;
-			//Serial.print("\r\nresponse_id: ");
-			//Serial.println(response_id(), DEC);
-		}
-
-		//Serial.print("status: ");
-		//Serial.println(recv_buf[0], HEX);
+			return -1;
 
 		if(recv_buf[0] == 0x01)		// 送信成功
-			return true;
+			return 1;
 
-		return false;
+		return 0;
 	}
 
 	// 受信する(成功時受信バイト数を返す)
