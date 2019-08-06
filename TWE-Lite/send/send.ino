@@ -9,6 +9,10 @@ struct Hoge {
 	char str[5];
 }__attribute__((__packed__));
 
+struct Fuga {
+	float vec[3];
+}__attribute__((__packed__));
+
 void setup(){
 	Serial.begin(38400);
 	Serial.println("setup");
@@ -23,7 +27,14 @@ void setup(){
 	hoge.str[2] = 'l';
 	hoge.str[3] = 'l';
 	hoge.str[4] = 'o';
+
+	Fuga fuga;
+	fuga.vec[0] = 1.0 / 1000000000000000;
+	fuga.vec[1] = 1234.56;
+	fuga.vec[2] = 1.0 / 3;
+
 	twelite.send_simple(0x01, 0x02, hoge);
+	twelite.send_simple(0x01, 0x03, fuga);
 	while(true);
 }
 
