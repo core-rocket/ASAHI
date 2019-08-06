@@ -14,6 +14,10 @@ struct Fuga {
 	float vec[3];
 }__attribute__((__packed__));
 
+struct Motion {
+	float acc[1];
+}__attribute__((__packed__));
+
 int main(int argc, char **argv){
 	twelite.init();
 
@@ -45,6 +49,14 @@ int main(int argc, char **argv){
 				<< "\tvec[0]" << fuga->vec[0] << std::endl
 				<< "\tvec[1]" << fuga->vec[1] << std::endl
 				<< "\tvec[2]" << fuga->vec[2] << std::endl;
+		}else if(twelite.cmd_type() == 0x04){
+			auto *motion = twelite.get_data<Motion>();
+			if(motion == nullptr) continue;
+			std::cout
+				<< "recieve motion" << std::endl
+				<< "\tacc[0]" << motion->acc[0] << std::endl;
+		}else{
+			std::cout << "recieve(" << twelite.cmd_type() << ")" << std::endl;
 		}
 	}
 

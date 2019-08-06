@@ -1,6 +1,7 @@
-#define TWE_LITE_USE_HARDWARE_SERIAL
 #include "../TWE-Lite/TWE-Lite.hpp"
+#define GPS_USE_HARDWARE_SERIAL
 #include "GPS/GPS.hpp"
+#include "MPU6050/MPU6050.hpp"
 
 // ボードレート
 #define BRATE	38400
@@ -13,33 +14,22 @@ enum class Mode : char {
 	Descent,	// ディセントモード．開傘〜着水まで．
 };
 
-//#define NO_GPS
-//#define NO_TWE
-
 // グローバル変数
 Mode g_mode;
-#ifndef NO_GPS
-	GPS gps(5, 6);
-#endif
-#ifndef NO_TWE
-	TWE_Lite twelite(0, 1, BRATE);
-#endif
+MPU6050 mpu;
+GPS gps(BRATE);
+TWE_Lite twelite(6, 5, BRATE);
 
 // 初期化関数．一度だけ実行される．
 void setup(){
-	Serial.begin(BRATE);
-
 	//TODO: センサ初期化
-#ifndef NO_GPS
-	gps.init(BRATE);
+	Wire.begin();
+	mpu.init();
+	gps.init();
 	delay(1000);
-#endif
 
 	//TODO: TWE-Lite初期化
-#ifndef NO_TWE
 	twelite.init();
-	twelite.send_buf[0] = 0x01;
-#endif
 
 	//TODO: 動作モードをSDカードから読み込む
 	// (動作中に瞬断して再起動する可能性がある)
@@ -60,6 +50,10 @@ void loop(){
 			break;
 	}
 
+	auto motion = mpu.get_data();
+	Serial.print("acc[0] = ");
+	Serial.println(static_cast<float>(motion.acc[0]) / 16384.0);
+
 #ifndef NO_GPS
 	Serial.print("GPS: ");
 	for(size_t i=0;i<500;i++){
@@ -72,7 +66,8 @@ void loop(){
 
 #ifndef NO_TWE
 	//TODO: テレメトリ送信
-	if(twelite.send(0x78, 1)){
+	twelite.send_simple(0x01, 0x04, static_cast<float>(motion.acc[0]) / 16384.0);
+	if(twelite.check_send() == 1){
 		Serial.println("TWE-Lite send success");
 	}else{
 		Serial.println("TWE-Lite send failed");
