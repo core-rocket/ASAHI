@@ -1,5 +1,5 @@
-#define TWE_LITE_USE_HARDWARE_SERIAL
 #include "../TWE-Lite/TWE-Lite.hpp"
+#define GPS_USE_HARDWARE_SERIAL
 #include "GPS/GPS.hpp"
 #include "MPU6050/MPU6050.hpp"
 
@@ -14,35 +14,22 @@ enum class Mode : char {
 	Descent,	// ディセントモード．開傘〜着水まで．
 };
 
-//#define NO_GPS
-//#define NO_TWE
-
 // グローバル変数
 Mode g_mode;
 MPU6050 mpu;
-#ifndef NO_GPS
-	GPS gps(5, 6);
-#endif
-#ifndef NO_TWE
-	TWE_Lite twelite(0, 1, BRATE);
-#endif
+GPS gps(BRATE);
+TWE_Lite twelite(6, 5, BRATE);
 
 // 初期化関数．一度だけ実行される．
 void setup(){
-	Serial.begin(BRATE);
-
 	//TODO: センサ初期化
 	Wire.begin();
 	mpu.init();
-#ifndef NO_GPS
-	gps.init(BRATE);
+	gps.init();
 	delay(1000);
-#endif
 
 	//TODO: TWE-Lite初期化
-#ifndef NO_TWE
 	twelite.init();
-#endif
 
 	//TODO: 動作モードをSDカードから読み込む
 	// (動作中に瞬断して再起動する可能性がある)
