@@ -10,20 +10,41 @@ struct Hoge {
 	char str[5];
 }__attribute__((__packed__));
 
+struct Fuga {
+	float vec[3];
+}__attribute__((__packed__));
+
 int main(int argc, char **argv){
 	twelite.init();
 
-	Hoge hoge;
-
 	while(true){
-		if(twelite.recv(hoge) != 0){
+		if(twelite.recv() == 0) continue;
+
+		if(!twelite.is_simple()) continue;
+
+		if(twelite.cmd_type() == 0x02){
+			auto *hoge = twelite.get_data<Hoge>();
+			if(hoge == nullptr)
+				continue;
 			std::cout
-				<< "u8 = " << std::hex << (uint32_t)hoge.u8 << std::endl
-				<< "u16=" << std::hex << hoge.u16 << std::endl
-				<< "str:";
+				<< "recieve Hoge" << std::endl
+				<< "\tu8 = " << std::hex << (uint32_t)hoge->u8 << std::endl
+				<< "\tu16=" << std::hex << hoge->u16 << std::endl
+				<< "\tstr:";
 			for(size_t i=0;i<5;i++)
-				std::cout << hoge.str[i];
+				std::cout << hoge->str[i];
 			std::cout << std::endl;
+
+			twelite.clear_buf();
+		}else if(twelite.cmd_type() == 0x03){
+			auto *fuga = twelite.get_data<Fuga>();
+			if(fuga == nullptr)
+				continue;
+			std::cout
+				<< "recieve Fuga" << std::endl
+				<< "\tvec[0]" << fuga->vec[0] << std::endl
+				<< "\tvec[1]" << fuga->vec[1] << std::endl
+				<< "\tvec[2]" << fuga->vec[2] << std::endl;
 		}
 	}
 

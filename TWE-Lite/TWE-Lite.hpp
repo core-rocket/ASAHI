@@ -177,6 +177,13 @@ public:
 	}
 
 	template<typename T>
+	const T* get_data(const size_t start=0) const {
+		if((parser.get_length() - start) != sizeof(T))
+			return nullptr;
+		return reinterpret_cast<const T*>(static_cast<const uint8_t*>(recv_buf) + start);
+	}
+
+	template<typename T>
 	const size_t recv(T &data, const size_t timeout=100){
 		parser.set_buf(reinterpret_cast<uint8_t*>(&data), sizeof(T));
 		if(try_recv(timeout))
@@ -210,6 +217,8 @@ public:
 
 	inline const uint32_t from_ext_addr() const { return parser.get_from_ext_addr();}
 	inline const uint32_t my_ext_addr()   const { return parser.get_my_ext_addr();}
+
+	inline void clear_buf() { parser.clear_buf(); }
 
 	// 受信成功時trueを返す
 	// 受信失敗, タイムアウト時falseを返す
@@ -278,6 +287,10 @@ public:
 		inline void set_buf(uint8_t *buf, const size_t &size){
 			payload = buf;
 			payload_bufsize = size;
+		}
+
+		inline void clear_buf(){
+			payload_length = 0;
 		}
 
 		// 1byteずつパースする
