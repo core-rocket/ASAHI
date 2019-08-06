@@ -46,6 +46,7 @@ def change_srate(srate):
 
 print("brate = 9600")
 change_brate(115200)
+#change_brate(38400)
 
 read_test2(1)
 change_srate(1000 / 10)
