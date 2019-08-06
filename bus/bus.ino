@@ -38,7 +38,6 @@ void setup(){
 	//TODO: TWE-Lite初期化
 #ifndef NO_TWE
 	twelite.init();
-	twelite.send_buf[0] = 0x01;
 #endif
 
 	//TODO: 動作モードをSDカードから読み込む
@@ -72,7 +71,9 @@ void loop(){
 
 #ifndef NO_TWE
 	//TODO: テレメトリ送信
-	if(twelite.send(0x78, 1)){
+	int hoge = 0;
+	twelite.send_simple(0x78, 1, hoge);
+	if(twelite.check_send() == 1){
 		Serial.println("TWE-Lite send success");
 	}else{
 		Serial.println("TWE-Lite send failed");
