@@ -4,12 +4,13 @@
 #define GPS_USE_HARDWARE_SERIAL
 #include "GPS/GPS.hpp"
 #include "MPU6050/MPU6050.hpp"
+#include "queue.hpp"
 
 // ボードレート
 #define BRATE		38400
 
 // タイマー関数実行間隔(Hz)
-#define TIMER_HZ	100
+#define TIMER_HZ	50
 
 // センサ
 GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
@@ -27,7 +28,8 @@ namespace global {
 
 // センサデータ
 namespace sensor_data {
-	volatile MPU6050::data_t motion;
+	volatile queue<MPU6050::data_t, 10> motion;
+	volatile queue<unsigned long, 10> motion_time;
 }
 
 // 関数
@@ -37,6 +39,7 @@ void timer_handler();	// タイマ割り込みハンドラ
 // 文字列でログを送る(あとで消す)
 void send_log(const char *str){
 	twelite.send_simple(0x01, 0x00, str);
+	Serial.println(str);
 }
 
 // 初期化関数．起動時, リセット時に実行される．
@@ -74,9 +77,9 @@ void loop(){
 
 	global::loop_count++;
 
-	Serial.print(global::loop_count - 1);
-	Serial.print(" ");
-	Serial.println(global::loop_time);
+//	Serial.print(global::loop_count - 1);
+//	Serial.print(" ");
+//	Serial.println(global::loop_time);
 
 //	Serial.print("GPS: ");
 //	for(size_t i=0;i<gps.available();i++){
@@ -92,24 +95,36 @@ void loop(){
 
 void send_telemetry(){
 	using namespace sensor_data;
-	const Vec16_t acc = {
-		motion.acc[0],
-		motion.acc[1],
-		motion.acc[2],
-	};
-	const Vec16_t gyro = {
-		motion.gyro[0],
-		motion.gyro[1],
-		motion.gyro[2],
-	};
 
-	twelite.send_simple(0x01, 0x01, acc);
-	twelite.send_simple(0x01, 0x02, gyro);
+	Serial.println(motion.size());
+
+	for(size_t i=0;i<motion.size();i++){
+		const auto &m = motion.front();
+		const Vec16_t acc = {
+			m.acc[0],
+			m.acc[1],
+			m.acc[2],
+		};
+		const Vec16_t gyro= {
+			m.gyro[0],
+			m.gyro[1],
+			m.gyro[2],
+		};
+
+		twelite.send_simple(0x01, 0x01, acc);
+		twelite.send_simple(0x01, 0x02, gyro);
+
+		motion.pop();
+	}
+
 }
 
 void timer_handler(){
+	using namespace sensor_data;
+
+	motion_time.push(millis());
 	interrupts();	// 割り込み許可
-	auto motion = mpu.get_data();
+	auto m = mpu.get_data();
 	noInterrupts();	// 割り込み禁止
-	sensor_data::motion = motion;
+	motion.push(m);
 }
