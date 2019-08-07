@@ -1,105 +1,68 @@
 #include <iostream>
-#define RASPBERRY_PI
-#include "../TWE-Lite/TWE-Lite.hpp"
-#include "../telemetry.h"
+#include <fstream>
+#include <thread>
+#include "twelite.hpp"
 
-TWE_Lite twe("/dev/ttyUSB0", 115200);
+void print_vec(const twelite::vec_t &v);
 
-void parse_simple(const TWE_Lite &twe);
-void parse_extend(const TWE_Lite &twe);
+void save_loop();
 
 int main(int argc, char **argv){
-//	TWE_Lite twe("/dev/ttyUSB0", 115200);
-
 	std::cout << "initialize TWE-Lite...";
-	if(twe.init()){
+	if(twelite::init()){
 		std::cout << "[ok]" << std::endl;
 	}else{
 		std::cout << "[failed]" << std::endl;
 		return -1;
 	}
 
-	// 受信ループ
+	std::thread twelite_thread(twelite::loop);
+	std::thread save_thread(save_loop);
+
 	while(true){
-		if(twe.recv() == 0) continue; // 受信失敗
-
-		if(twe.is_response()){ // 応答メッセージ
-			if(twe.recv_buf[0] == 0x01){
-				// 送信成功
-				std::cout << "send success" << std::endl;
-			}else{
-				// 送信失敗
-				std::cout << "send failed" << std::endl;
-			}
-			continue;
-		}
-
-		if(twe.is_simple())	// 簡易形式
-			parse_simple(twe);
-		else				// 拡張形式
-			parse_extend(twe);
-
-		delay(1); // 少し待った方がいい
+		using namespace twelite;
+		auto acc = latest_acc;
+		auto gyro= latest_gyro;
+		std::cout << "acc:  ";
+		print_vec(acc);
+		std::cout << "gyro: ";
+		print_vec(gyro);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	return 0;
 }
 
-void get_acc(const TWE_Lite &twe){
-	auto *acc = twe.get_data<Vec16_t>();
-	std::cout << "acc: ";
-	if(acc == nullptr){
-		std::cout << "error" << std::endl;
-		return;
-	}
-
-	float v[3];
-	for(int i=0;i<3;i++)
-		v[i] = static_cast<float>(acc->raw[i]) / 16384.0;
+void print_vec(const twelite::vec_t &v){
 	std::cout
-		<< "x=" << v[0]
-		<< ",\ty=" << v[1]
-		<< ",\tz=" << v[2] << std::endl;
+		<< "time=" << v.time
+		<< ", x=" << v.x
+		<< ", y=" << v.y
+		<< ", z=" << v.z << std::endl;
 }
 
-void get_gyro(const TWE_Lite &twe){
-	auto *gyro = twe.get_data<Vec16_t>();
-	std::cout << "gyro: ";
-	if(gyro == nullptr){
-		std::cout << "error" << std::endl;
-		return;
+void fwrite_vec(std::ofstream &file, const twelite::vec_t &v){
+	file << v.time << "," << v.x << "," << v.y << "," << v.z << std::endl;
+}
+
+void save_loop(){
+	using namespace twelite;
+	std::ofstream f_acc, f_gyro;
+
+	f_acc.open("log/acc.csv", std::ios::app);
+	f_gyro.open("log/gyro.csv", std::ios::app);
+
+	while(true){
+		for(size_t i=0;i<acc.size();i++){
+			const auto &v = acc.front();
+			fwrite_vec(f_acc, v);
+			acc.pop();
+		}
+		for(size_t i=0;i<gyro.size();i++){
+			const auto &v = gyro.front();
+			fwrite_vec(f_gyro, v);
+			gyro.pop();
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
-
-	float v[3];
-	for(int i=0;i<3;i++)
-		v[i] = static_cast<float>(gyro->raw[i]) / 131.0;
-	std::cout
-		<< "x=" << v[0]
-		<< ",\ty=" << v[1]
-		<< ",\tz=" << v[2] << std::endl;
-}
-
-// 簡易形式で受信したデータをパースする
-void parse_simple(const TWE_Lite &twe){
-	switch(twe.cmd_type()){
-		case 0x00:	// 文字列
-			std::cout << "string: \""
-				<< twe.recv_buf << "\"" << std::endl;
-			break;
-		case 0x01:	// 3軸加速度
-			get_acc(twe);
-			break;
-		case 0x02:	// 3軸ジャイロ
-			get_gyro(twe);
-			break;
-		default:
-			std::cout
-				<< "unknown type data(simple format)" << std::endl
-				<< "\tcmd_type = 0x" << std::hex << static_cast<uint32_t>(twe.cmd_type()) << std::endl
-				<< "\tlength = " << std::dec << twe.get_length() << std::endl;
-	}
-}
-
-void parse_extend(const TWE_Lite &twe){
-	std::cout << "parse_extend " << std::endl;
 }

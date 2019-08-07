@@ -18,6 +18,13 @@
 		// Raspberry Pi
 		#include <wiringPi.h>
 		#include <wiringSerial.h>
+	#else
+		#define NO_MILLIS
+		// Linux
+		#include <chrono>
+		#include <unistd.h>
+		#include <fcntl.h>
+		#include <termios.h>
 	#endif
 #endif
 
@@ -37,18 +44,14 @@ public:
 
 	// デストラクタ
 	~TWE_Lite(){
-#ifdef ARDUINO
-		// 特にやることなし(そもそもデストラクタが呼ばれるべきではない)
-#else
-	if(fd != 0){
-	#ifdef RASPBERRY_PI
-		serialFlush(fd);
-		serialClose(fd);
-	#else
-		std::fclose(fd);
-	#endif
-	}
-#endif
+		#ifdef ARDUINO
+			// 特にやることなし(そもそもデストラクタが呼ばれるべきではない)
+		#elif defined(RASPBERRY_PI)
+			if(fd != 0){
+				serialFlush(fd);
+				serialClose(fd);
+			}
+		#endif
 	}
 
 	// 定数
@@ -77,9 +80,21 @@ public:
 				serial = &Serial;
 			#else
 				serial = new SoftwareSerial(rx, tx);
+			#endif
+			serial->begin(brate);
+		#else
+			fd = open(devfile.c_str(), O_RDWR | O_NOCTTY);
+			termios setting;
+			setting.c_cflag = B115200 | CRTSCTS | CS8 | CLOCAL | CREAD;
+			setting.c_iflag = IGNPAR;
+			setting.c_oflag = 0;
+			setting.c_lflag = 0;	// non-canonical, no-echo
+			setting.c_cc[VTIME]	= 0;
+			setting.c_cc[VMIN]	= 1;
+
+			tcflush(fd, TCIFLUSH);
+			tcsetattr(fd, TCSANOW, &setting);
 		#endif
-		serial->begin(brate);
-#endif
 		return true;
 	}
 
@@ -90,6 +105,8 @@ public:
 #elif defined(RASPBERRY_PI)
 		serialPutchar(fd, val);
 		//std::cout << std::hex << (int)val;
+#else
+		write(fd, &val, 1);
 #endif
 	}
 	inline void swrite16_big(const uint16_t &val) const {
@@ -110,6 +127,12 @@ public:
 		return serial->read();
 #elif defined(RASPBERRY_PI)
 		return serialGetchar(fd);
+#else
+		char c;
+		if(read(fd, &c, 1) == 1)
+			return c;
+		return c;
+		return '\0';
 #endif
 	}
 
@@ -118,6 +141,8 @@ public:
 		return serial->available();
 #elif defined(RASPBERRY_PI)
 		return serialDataAvail(fd);
+#else
+		return 1;
 #endif
 	}
 
@@ -237,11 +262,24 @@ public:
 	inline auto try_recv(const size_t &timeout) -> bool {
 		const size_t size = savail();
 		if(size <= 0) return false;
-		const auto start = millis();	// TODO: Arduino,Raspberry Pi以外では使えない
+		const auto start =
+			#ifdef NO_MILLIS
+				std::chrono::system_clock::now();
+			#else
+				millis();
+			#endif
 		for(size_t i=0;i<size;i++){
 			if(parser.parse8(sread8()))
 				return true;
-			if((millis() - start) >= timeout)
+
+			#ifdef NO_MILLIS
+				const auto end = std::chrono::system_clock::now();
+				const double e = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+				const size_t elapsed = static_cast<size_t>(e);
+			#else
+				const auto elapsed = millis() - start;
+			#endif
+			if(elapsed >= timeout)
 				break;
 		}
 		return false;
@@ -474,6 +512,7 @@ private:
 	#else
 	SoftwareSerial *serial = nullptr;
 	#endif
+//#elif defined(RASPBERRY_PI)
 #else
 	int fd = 0;
 #endif

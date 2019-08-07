@@ -1,10 +1,10 @@
 TARGET	= station
-OBJS	= main.o
+OBJS	= main.o twelite.o
 
 CC		= gcc
 CXX		= g++
 
-LDFLAGS	= -lwiringPi
+LDFLAGS	= -lpthread
 
 %.o: %.c
 	$(CC) -c -o $@ $<
@@ -22,3 +22,7 @@ run:
 clean:
 	rm -f $(TARGET)
 	rm -f *.o
+
+clean_all:
+	make clean
+	rm -f log/*
