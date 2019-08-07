@@ -1,6 +1,7 @@
 #include <iostream>
 #define RASPBERRY_PI
 #include "../TWE-Lite/TWE-Lite.hpp"
+#include "../telemetry.h"
 
 TWE_Lite twe("/dev/ttyUSB0", 115200);
 
@@ -44,12 +45,52 @@ int main(int argc, char **argv){
 	return 0;
 }
 
+void get_acc(const TWE_Lite &twe){
+	auto *acc = twe.get_data<Vec16_t>();
+	std::cout << "acc: ";
+	if(acc == nullptr){
+		std::cout << "error" << std::endl;
+		return;
+	}
+
+	float v[3];
+	for(int i=0;i<3;i++)
+		v[i] = static_cast<float>(acc->raw[i]) / 16384.0;
+	std::cout
+		<< "x=" << v[0]
+		<< ",\ty=" << v[1]
+		<< ",\tz=" << v[2] << std::endl;
+}
+
+void get_gyro(const TWE_Lite &twe){
+	auto *gyro = twe.get_data<Vec16_t>();
+	std::cout << "gyro: ";
+	if(gyro == nullptr){
+		std::cout << "error" << std::endl;
+		return;
+	}
+
+	float v[3];
+	for(int i=0;i<3;i++)
+		v[i] = static_cast<float>(gyro->raw[i]) / 131.0;
+	std::cout
+		<< "x=" << v[0]
+		<< ",\ty=" << v[1]
+		<< ",\tz=" << v[2] << std::endl;
+}
+
 // 簡易形式で受信したデータをパースする
 void parse_simple(const TWE_Lite &twe){
 	switch(twe.cmd_type()){
 		case 0x00:	// 文字列
 			std::cout << "string: \""
 				<< twe.recv_buf << "\"" << std::endl;
+			break;
+		case 0x01:	// 3軸加速度
+			get_acc(twe);
+			break;
+		case 0x02:	// 3軸ジャイロ
+			get_gyro(twe);
 			break;
 		default:
 			std::cout

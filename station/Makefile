@@ -18,3 +18,7 @@ $(TARGET): $(OBJS)
 run:
 	make
 	./$(TARGET)
+
+clean:
+	rm -f $(TARGET)
+	rm -f *.o
