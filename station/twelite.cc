@@ -1,6 +1,7 @@
 #include <iostream>
+#include <thread>
 
-#define RASPBERRY_PI
+//#define RASPBERRY_PI
 #include "../TWE-Lite/TWE-Lite.hpp"
 #include "../telemetry.h"
 
@@ -42,7 +43,8 @@ void twelite::loop(){
 		else
 			parse_extend(twe);
 
-		delay(1);
+		//delay(1);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
 
