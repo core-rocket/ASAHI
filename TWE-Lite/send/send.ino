@@ -1,7 +1,7 @@
-#define TWE_LITE_USE_HARDWARE_SERIAL
+//#define TWE_LITE_USE_HARDWARE_SERIAL
 #include "../TWE-Lite.hpp"
 
-TWE_Lite twelite(4, 3, 38400);
+TWE_Lite twelite(6, 5, 38400);
 
 struct Hoge {
 	uint8_t u8;
@@ -13,13 +13,17 @@ struct Fuga {
 	float vec[3];
 }__attribute__((__packed__));
 
+Hoge hoge;
+Fuga fuga;
+
 void setup(){
 	Serial.begin(38400);
 	Serial.println("setup");
 
 	twelite.init();
 
-	Hoge hoge;
+	twelite.send_simple(0x01, 0x00, "hogehogehoge");
+
 	hoge.u8 = 0xaa;
 	hoge.u16= 0xbeaf;
 	hoge.str[0] = 'h';
@@ -28,7 +32,6 @@ void setup(){
 	hoge.str[3] = 'l';
 	hoge.str[4] = 'o';
 
-	Fuga fuga;
 	fuga.vec[0] = 1.0 / 1000000000000000;
 	fuga.vec[1] = 1234.56;
 	fuga.vec[2] = 1.0 / 3;
@@ -42,12 +45,8 @@ void setup(){
 
 void loop(){
 	static size_t num = 0;
-	static uint8_t buf[] = { 'A' };
 
-	if(num % 2 == 0)
-		twelite.send_buf_simple(0x01, 0x02, buf, 1);
-	else
-		twelite.send_buf_extend(0x01, 0x01, buf, 1);
+	twelite.send_simple(0x01, 0x02, hoge);
 
 	// response message check
 check:
