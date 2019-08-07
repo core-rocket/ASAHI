@@ -22,3 +22,7 @@ run:
 clean:
 	rm -f $(TARGET)
 	rm -f *.o
+
+clean_all:
+	make clean
+	rm -f log/*

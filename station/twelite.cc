@@ -14,6 +14,7 @@ void parse_extend(const TWE_Lite &twe);
 namespace twelite {
 	vec_t latest_acc = {};
 	vec_t latest_gyro= {};
+	std::queue<vec_t> acc, gyro;
 }
 
 bool twelite::init(){
@@ -69,6 +70,7 @@ void get_acc(const TWE_Lite &twe){
 		v[1],
 		v[2]
 	};
+	twelite::acc.push(twelite::latest_acc);
 }
 
 void get_gyro(const TWE_Lite &twe){
@@ -87,6 +89,7 @@ void get_gyro(const TWE_Lite &twe){
 		v[1],
 		v[2]
 	};
+	twelite::gyro.push(twelite::latest_gyro);
 }
 
 // 簡易形式で受信したデータをパースする
