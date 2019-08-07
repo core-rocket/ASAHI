@@ -52,8 +52,12 @@ void loop(){
 	}
 
 	auto motion = mpu.get_data();
-	Serial.print("acc[0] = ");
-	Serial.println(static_cast<float>(motion.acc[0]) / 16384.0);
+	Serial.print("acc: x=");
+	Serial.print(static_cast<float>(motion.acc[0]) / 16384.0);
+	Serial.print(", y=");
+	Serial.print(static_cast<float>(motion.acc[1]) / 16384.0);
+	Serial.print(", z=");
+	Serial.println(static_cast<float>(motion.acc[2]) / 16384.0);
 
 	Serial.print("GPS: ");
 	for(size_t i=0;i<500;i++){
@@ -64,7 +68,7 @@ void loop(){
 	Serial.println("");
 
 	// テレメトリ送信
-	twelite.send_simple(0x01, 0x00, "send string test");
+//	twelite.send_simple(0x01, 0x00, "send string test");
 
 	// 加速度
 	Vec16_t telem_acc;
