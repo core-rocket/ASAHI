@@ -54,7 +54,8 @@ void parse_simple(const TWE_Lite &twe){
 		default:
 			std::cout
 				<< "unknown type data(simple format)" << std::endl
-				<< "\tcmd_type = 0x" << std::hex << static_cast<uint32_t>(twe.cmd_type()) << std::endl;
+				<< "\tcmd_type = 0x" << std::hex << static_cast<uint32_t>(twe.cmd_type()) << std::endl
+				<< "\tlength = " << std::dec << twe.get_length() << std::endl;
 	}
 }
 
