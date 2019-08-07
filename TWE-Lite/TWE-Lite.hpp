@@ -225,6 +225,8 @@ public:
 	inline const uint8_t response_id()const { return parser.get_response_id();}
 	inline const uint8_t LQI()        const { return parser.get_LQI(); }
 
+	inline const uint16_t get_length() const { return parser.get_length(); }
+
 	inline const uint32_t from_ext_addr() const { return parser.get_from_ext_addr();}
 	inline const uint32_t my_ext_addr()   const { return parser.get_my_ext_addr();}
 
