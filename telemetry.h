@@ -9,7 +9,7 @@ struct Vec16_t {
 		uint16_t raw[3];
 		struct {
 			uint16_t x, y, z;
-		}
+		};
 	};
 } PACKED;
 
