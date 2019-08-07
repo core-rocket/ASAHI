@@ -5,6 +5,7 @@
 
 // 3軸のuint16_tの値
 struct Vec16_t {
+	uint32_t time;
 	union {
 		int16_t raw[3];
 		struct {
@@ -15,6 +16,7 @@ struct Vec16_t {
 
 // 32bit float
 struct Float32 {
+	uint32_t time;
 	union {
 		uint32_t raw;
 		float value;
