@@ -18,6 +18,13 @@ MPU6050 mpu;
 // 無線機
 TWE_Lite twelite(6, 5, BRATE);
 
+// グローバル変数
+namespace global {
+	size_t loop_count = 0;				// 何回目のloopか
+	unsigned long loop_time = 0;		// 1回のloopにかかった時間
+	unsigned long last_loop_time = 0;
+}
+
 // センサデータ
 namespace sensor_data {
 	volatile MPU6050::data_t motion;
@@ -61,15 +68,23 @@ void setup(){
 
 // メインループ
 void loop(){
-//	auto motion = mpu.get_data();
+	const uint32_t now = millis();
+	global::loop_time = now - global::last_loop_time;
+	global::last_loop_time = now;
 
-	Serial.print("GPS: ");
-	for(size_t i=0;i<gps.available();i++){
-		const int c = gps.read();
-		if(c >= 0)
-			Serial.write((char)c);
-	}
-	Serial.println("");
+	global::loop_count++;
+
+	Serial.print(global::loop_count - 1);
+	Serial.print(" ");
+	Serial.println(global::loop_time);
+
+//	Serial.print("GPS: ");
+//	for(size_t i=0;i<gps.available();i++){
+//		const int c = gps.read();
+//		if(c >= 0)
+//			Serial.write((char)c);
+//	}
+//	Serial.println("");
 
 	// テレメトリ送信
 	send_telemetry();
