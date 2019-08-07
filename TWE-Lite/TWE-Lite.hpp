@@ -9,7 +9,9 @@
 #else
 	// others
 	#include <cstdio>
+	#include <cstring>
 	#include <string>
+	using std::strlen;
 	#ifdef _WIN32
 		#error fuck Windows
 	#elif defined(RASPBERRY_PI)
