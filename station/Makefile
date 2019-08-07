@@ -1,10 +1,10 @@
 TARGET	= station
-OBJS	= main.o
+OBJS	= main.o twelite.o
 
 CC		= gcc
 CXX		= g++
 
-LDFLAGS	= -lwiringPi
+LDFLAGS	= -lwiringPi -lpthread
 
 %.o: %.c
 	$(CC) -c -o $@ $<
