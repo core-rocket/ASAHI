@@ -4,7 +4,7 @@ OBJS	= main.o twelite.o
 CC		= gcc
 CXX		= g++
 
-LDFLAGS	= -lwiringPi -lpthread
+LDFLAGS	= -lpthread
 
 %.o: %.c
 	$(CC) -c -o $@ $<

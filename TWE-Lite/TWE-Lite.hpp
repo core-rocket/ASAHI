@@ -141,6 +141,8 @@ public:
 		return serial->available();
 #elif defined(RASPBERRY_PI)
 		return serialDataAvail(fd);
+#else
+		return 1;
 #endif
 	}
 
