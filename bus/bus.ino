@@ -1,3 +1,4 @@
+#include <MsTimer2.h>				// タイマ
 #include "../TWE-Lite/TWE-Lite.hpp"
 #include "../telemetry.h"
 #define GPS_USE_HARDWARE_SERIAL
@@ -5,62 +6,65 @@
 #include "MPU6050/MPU6050.hpp"
 
 // ボードレート
-#define BRATE	38400
+#define BRATE		38400
 
-// 動作モード
-enum class Mode : char {
-	Wait,		// ウェイトモード．コマンド受領までなにもしないをする．
-	Standby,	// スタンバイモード．離床判定を行う．
-	Flight,		// フライトモード．離床〜開傘まで．
-	Descent,	// ディセントモード．開傘〜着水まで．
-};
+// タイマー関数実行間隔(Hz)
+#define TIMER_HZ	100
 
-// グローバル変数
-Mode g_mode;
+// センサ
+GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
 MPU6050 mpu;
-GPS gps(BRATE);
+
+// 無線機
 TWE_Lite twelite(6, 5, BRATE);
 
-// 初期化関数．一度だけ実行される．
+// センサデータ
+namespace sensor_data {
+	volatile MPU6050::data_t motion;
+}
+
+// 関数
+void send_telemetry();	// テレメトリ送信
+void timer_handler();	// タイマ割り込みハンドラ
+
+// 文字列でログを送る(あとで消す)
+void send_log(const char *str){
+	twelite.send_simple(0x01, 0x00, str);
+}
+
+// 初期化関数．起動時, リセット時に実行される．
 void setup(){
-	//TODO: センサ初期化
+	// GPS初期化
+	gps.init();		// baud変更があるので初めに初期化
+	delay(1000);	// 念の為少し待つ
+
+	// 無線機初期化
+	twelite.init();
+	send_log("setup");
+
+	// センサ初期化
+	send_log("sensor init");
 	Wire.begin();
 	mpu.init();
-	gps.init();
-	delay(1000);
-
-	//TODO: TWE-Lite初期化
-	twelite.init();
+	MsTimer2::set(1000 / TIMER_HZ, timer_handler);
+	send_log("finish");
 
 	//TODO: 動作モードをSDカードから読み込む
 	// (動作中に瞬断して再起動する可能性がある)
-	if(g_mode != Mode::Standby)
-		return;		// 再起動時は早くそのモードの動作に戻る
+//	if(g_mode != Mode::Standby)
+//		return;		// 再起動時は早くそのモードの動作に戻る
 	//TODO: 地上局に起動を通知
+
+	// タイマスタート
+	MsTimer2::start();
 }
 
+// メインループ
 void loop(){
-	switch(g_mode){
-		case Mode::Wait:
-			break;
-		case Mode::Standby:
-			break;
-		case Mode::Flight:
-			break;
-		case Mode::Descent:
-			break;
-	}
-
-	auto motion = mpu.get_data();
-	Serial.print("acc: x=");
-	Serial.print(static_cast<float>(motion.acc[0]) / 16384.0);
-	Serial.print(", y=");
-	Serial.print(static_cast<float>(motion.acc[1]) / 16384.0);
-	Serial.print(", z=");
-	Serial.println(static_cast<float>(motion.acc[2]) / 16384.0);
+//	auto motion = mpu.get_data();
 
 	Serial.print("GPS: ");
-	for(size_t i=0;i<500;i++){
+	for(size_t i=0;i<gps.available();i++){
 		const int c = gps.read();
 		if(c >= 0)
 			Serial.write((char)c);
@@ -68,27 +72,29 @@ void loop(){
 	Serial.println("");
 
 	// テレメトリ送信
-//	twelite.send_simple(0x01, 0x00, "send string test");
+	send_telemetry();
+}
 
-	// 加速度
-	Vec16_t telem_acc;
-	telem_acc.x = motion.acc[0];
-	telem_acc.y = motion.acc[1];
-	telem_acc.z = motion.acc[2];
-	twelite.send_simple(0x01, 0x01, telem_acc);
+void send_telemetry(){
+	using namespace sensor_data;
+	const Vec16_t acc = {
+		motion.acc[0],
+		motion.acc[1],
+		motion.acc[2],
+	};
+	const Vec16_t gyro = {
+		motion.gyro[0],
+		motion.gyro[1],
+		motion.gyro[2],
+	};
 
-	// 角速度
-	Vec16_t telem_gyro;
-	telem_gyro.x= motion.gyro[0];
-	telem_gyro.y= motion.gyro[1];
-	telem_gyro.z= motion.gyro[2];
-	twelite.send_simple(0x01, 0x02, telem_gyro);
+	twelite.send_simple(0x01, 0x01, acc);
+	twelite.send_simple(0x01, 0x02, gyro);
+}
 
-	if(twelite.check_send() == 1){
-		Serial.println("TWE-Lite send success");
-	}else{
-		Serial.println("TWE-Lite send failed");
-	}
-
-	delay(300);
+void timer_handler(){
+	interrupts();	// 割り込み許可
+	auto motion = mpu.get_data();
+	noInterrupts();	// 割り込み禁止
+	sensor_data::motion = motion;
 }
