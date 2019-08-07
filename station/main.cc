@@ -45,6 +45,14 @@ int main(int argc, char **argv){
 	return 0;
 }
 
+void get_string(const TWE_Lite &twe){
+	std::cout << "string: \"";
+	for(size_t i=0;i<twe.get_length();i++){
+		std::cout << static_cast<char>(twe.recv_buf[i]);
+	}
+	std::cout << std::endl;
+}
+
 void get_acc(const TWE_Lite &twe){
 	auto *acc = twe.get_data<Vec16_t>();
 	std::cout << "acc: ";
@@ -83,8 +91,7 @@ void get_gyro(const TWE_Lite &twe){
 void parse_simple(const TWE_Lite &twe){
 	switch(twe.cmd_type()){
 		case 0x00:	// 文字列
-			std::cout << "string: \""
-				<< twe.recv_buf << "\"" << std::endl;
+			get_string(twe);
 			break;
 		case 0x01:	// 3軸加速度
 			get_acc(twe);
