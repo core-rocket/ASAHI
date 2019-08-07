@@ -100,12 +100,15 @@ void send_telemetry(){
 
 	for(size_t i=0;i<motion.size();i++){
 		const auto &m = motion.front();
+		const auto &t = motion_time.front();
 		const Vec16_t acc = {
+			t,
 			m.acc[0],
 			m.acc[1],
 			m.acc[2],
 		};
 		const Vec16_t gyro= {
+			t,
 			m.gyro[0],
 			m.gyro[1],
 			m.gyro[2],
@@ -115,6 +118,7 @@ void send_telemetry(){
 		twelite.send_simple(0x01, 0x02, gyro);
 
 		motion.pop();
+		motion_time.pop();
 	}
 
 }
