@@ -1,4 +1,5 @@
 #include "../TWE-Lite/TWE-Lite.hpp"
+#include "../telemetry.h"
 #define GPS_USE_HARDWARE_SERIAL
 #include "GPS/GPS.hpp"
 #include "MPU6050/MPU6050.hpp"
@@ -54,7 +55,6 @@ void loop(){
 	Serial.print("acc[0] = ");
 	Serial.println(static_cast<float>(motion.acc[0]) / 16384.0);
 
-#ifndef NO_GPS
 	Serial.print("GPS: ");
 	for(size_t i=0;i<500;i++){
 		const int c = gps.read();
@@ -62,16 +62,29 @@ void loop(){
 			Serial.write((char)c);
 	}
 	Serial.println("");
-#endif
 
-#ifndef NO_TWE
-	//TODO: テレメトリ送信
-	twelite.send_simple(0x01, 0x04, static_cast<float>(motion.acc[0]) / 16384.0);
+	// テレメトリ送信
+	twelite.send_simple(0x01, 0x00, "send string test");
+
+	// 加速度
+	Vec16_t telem_acc;
+	telem_acc.x = motion.acc[0];
+	telem_acc.y = motion.acc[1];
+	telem_acc.z = motion.acc[2];
+	twelite.send_simple(0x01, 0x01, telem_acc);
+
+	// 角速度
+	Vec16_t telem_gyro;
+	telem_gyro.x= motion.gyro[0];
+	telem_gyro.y= motion.gyro[1];
+	telem_gyro.z= motion.gyro[2];
+	twelite.send_simple(0x01, 0x02, telem_gyro);
+
 	if(twelite.check_send() == 1){
 		Serial.println("TWE-Lite send success");
 	}else{
 		Serial.println("TWE-Lite send failed");
 	}
-#endif
+
 	delay(300);
 }
