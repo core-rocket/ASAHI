@@ -6,6 +6,7 @@
 |D2|フライトピン|
 |D3|TWE-Lite RX|
 |D4|TWE-Lite TX|
+|D9|サーボPWN|
 |A4|SDA(5V)|
 |A5|SCL(5V)|
 
@@ -29,8 +30,8 @@
 |ピン|接続先|
 |-|-|
 |VCCA|3.3V|
-|A0|SCL(3.3V)|
-|A1|SDA(3.3V)|
+|A0|SDA(3.3V)|
+|A1|SCL(3.3V)|
 |OE|3.3V|
 
 - 右側
@@ -38,8 +39,8 @@
 |ピン|接続先|
 |-|-|
 |VCCB|5V|
-|B0|SCL(5V)|
-|B1|SDA(5V)|
+|B0|SDA(5V)|
+|B1|SCL(5V)|
 |GND|GND|
 
 ## BMP280
