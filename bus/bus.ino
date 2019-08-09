@@ -1,6 +1,6 @@
 #include <MsTimer2.h>				// タイマ
 #include "../TWE-Lite/TWE-Lite.hpp"
-#include "../telemetry.h"
+#include "../telemetry.hpp"
 #define GPS_USE_HARDWARE_SERIAL
 #include "GPS/GPS.hpp"
 #include "MPU6050/MPU6050.hpp"
