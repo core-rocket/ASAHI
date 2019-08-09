@@ -2,7 +2,7 @@ BOARD_TAG	= nano
 
 MONITOR_PORT	= /dev/ttyUSB0
 MONITOR_BAUDRATE= 9600
-ARDUINO_LIBS	+= MsTimer2 Wire SPI Adafruit_BMP280_Library
+ARDUINO_LIBS	+=
 
-include ../common.mk
+include ../../common.mk
 include /usr/share/arduino/Arduino.mk
