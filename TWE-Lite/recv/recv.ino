@@ -19,7 +19,13 @@ void loop(){
 //		Serial.print((char)b, HEX);
 //	}
 
+	twe.send_simple(0x00, 0x01, "aaa");
+	while(twe.check_send()!=1);
+	Serial.println("send: ");
+	delay(100);
+
 	size_t size = twe.recv();
+	if(size == 0) return;
 	Serial.print("recv: ");
 
 	for(size_t i=0;i<size;i++)
