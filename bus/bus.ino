@@ -115,8 +115,8 @@ void send_telemetry(){
 			m.gyro[2],
 		};
 
-		twelite.send_simple(0x01, 0x01, acc);
-		twelite.send_simple(0x01, 0x02, gyro);
+		twelite.send_simple(0x64, 0x01, acc);
+		twelite.send_simple(0x64, 0x02, gyro);
 
 		motion.pop();
 		motion_time.pop();
