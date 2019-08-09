@@ -33,6 +33,7 @@
 #endif
 
 #define BMP280_SAMPLING_RATE		100			// BMP280のサンプリングレート(Hz)
+#define BMP280_BUF_SIZE				5			// BMP280のバッファサイズ．移動平均のnでもある
 
 // ピン設定
 namespace pin {
@@ -61,9 +62,10 @@ namespace global {
 	volatile unsigned long	launch_time = 0;	// 離床からの経過時刻
 
 	// BMP280
-	volatile float			temperature = 0.0;	// 最新の気温(℃ )
-	volatile float			pressure	= 0.0;	// 最新の気圧(Pa)
-	volatile float			altitude	= 0.0;	// 最新の高度(m)
+	volatile size_t			bmp_count	= 0;				// バッファ書き込み番号
+	volatile float			temperature[BMP280_BUF_SIZE];	// 気温(℃ )
+	volatile float			pressure[BMP280_BUF_SIZE];		// 気圧(Pa)
+	volatile float			altitude	= 0.0;				// 最新の高度(m)
 }
 
 // センサ
@@ -75,7 +77,7 @@ namespace sensor {
 void init_led(const size_t pin);// LED初期設定
 void flightpin_handler();		// フライトピンの割り込みハンドラ(離床判定)
 void timer_handler();			// タイマ割り込み関数
-const float get_altitude();		// BMP280で高度を取得
+void update_altitude();			// 高度を更新する
 void error();					// エラー(内蔵LED点滅)
 
 void setup(){
@@ -105,7 +107,9 @@ void setup(){
 
 void loop(){
 	const auto& launch_time = global::launch_time;
-	const auto time = millis() - launch_time; // 離床からの時間
+	const auto time = millis() - launch_time;	// 離床からの時間
+
+	update_altitude();							// 高度を更新する
 	const auto& altitude = global::altitude;
 
 	switch(global::mode){
@@ -137,12 +141,7 @@ void loop(){
 			break;
 	}
 
-	Serial.print(global::temperature - 273.15);
-	Serial.print(" ");
-	Serial.print(global::pressure);
-	Serial.print(" ");
-	Serial.println(altitude);
-//	delay(100);
+//	Serial.println(altitude);
 }
 
 void init_led(const size_t pin){
@@ -168,14 +167,31 @@ void timer_handler(){
 
 	// i2cを使うので一時的に割り込み許可
 	interrupts();
-	global::temperature	= sensor::bmp.readTemperature();	// 気温(℃ )
-	global::pressure	= sensor::bmp.readPressure();		// 気圧(Pa)
+	global::temperature[global::bmp_count]	= bmp.readTemperature();	// 気温(℃ )
+	global::pressure[global::bmp_count]		= bmp.readPressure();		// 気圧(Pa)
 	noInterrupts();
+	global::bmp_count++;
+	if(global::bmp_count == BMP280_BUF_SIZE)
+		global::bmp_count = 0;
+}
 
-	// 高度を計算する
+void update_altitude(){
 	constexpr float p_0 = 1013.0;					// 海面気圧(hPa)
-	const auto &t = global::temperature + 273.15;	// Kにする
-	const auto &p = global::pressure / 100.0f;		// hPaにする
+
+	float t = 0;
+	float p = 0;
+
+	// 移動平均を計算する
+	for(size_t i=0;i<BMP280_BUF_SIZE;i++){
+		t += global::temperature[i];
+		p += global::pressure[i];
+	}
+	t = t / BMP280_BUF_SIZE;
+	p = p / BMP280_BUF_SIZE;
+
+	t = t + 273.15;		// Kにする
+	p = p / 100.0f;		// hPaにする
+
 	global::altitude = ((pow(p_0/p, 1/5.257) - 1)*t) / 0.0065;
 }
 
