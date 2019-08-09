@@ -1,6 +1,6 @@
 #include <MsTimer2.h>				// タイマ
 #include "../TWE-Lite/TWE-Lite.hpp"
-#include "../telemetry.h"
+#include "../telemetry.hpp"
 #define GPS_USE_HARDWARE_SERIAL
 #include "GPS/GPS.hpp"
 #include "MPU6050/MPU6050.hpp"
@@ -10,7 +10,7 @@
 #define BRATE		38400
 
 // タイマー関数実行間隔(Hz)
-#define TIMER_HZ	50
+#define TIMER_HZ	100
 
 // センサ
 GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
@@ -91,6 +91,7 @@ void loop(){
 
 	// テレメトリ送信
 	send_telemetry();
+	delay(100);
 }
 
 void send_telemetry(){
@@ -114,8 +115,8 @@ void send_telemetry(){
 			m.gyro[2],
 		};
 
-		twelite.send_simple(0x01, 0x01, acc);
-		twelite.send_simple(0x01, 0x02, gyro);
+		twelite.send_simple(0x64, 0x01, acc);
+		twelite.send_simple(0x64, 0x02, gyro);
 
 		motion.pop();
 		motion_time.pop();
@@ -125,10 +126,18 @@ void send_telemetry(){
 
 void timer_handler(){
 	using namespace sensor_data;
+	static size_t count = 0;
 
-	motion_time.push(millis());
+	const auto t = millis();
+
 	interrupts();	// 割り込み許可
 	auto m = mpu.get_data();
 	noInterrupts();	// 割り込み禁止
-	motion.push(m);
+
+	if(count % 5 == 0){
+		motion_time.push(t);
+		motion.push(m);
+	}
+
+	count++;
 }

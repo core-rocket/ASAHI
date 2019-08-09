@@ -2,28 +2,39 @@
 #include <Wire.h>				// i2c
 #include <Adafruit_BMP280.h>	// BMP280ライブラリ
 
-// BBM試験用高度
-#define ALTITUDE_PARACHUTE		135.0		// 開傘高度
-#define ALTITUDE_LEAFING		120.0		// リーフィング解除高度
+#define BBM
+
+#ifdef BBM		// BBM試験用パラメータ
+
+	#define ALTITUDE_PARACHUTE		135.0		// 開傘高度
+	#define ALTITUDE_LEAFING		120.0		// リーフィング解除高度
+
+#else
+	// 本番用パラメータ
+	#error please set altitude
+
+#endif
 
 // BBM試験(2019/8/4)にて，BMP280を使って高度を推測し，それに基づいてモードの移行を行うことができることを確認
 
 // ピン設定
 namespace pin {
-	constexpr size_t flight = 2;
+	constexpr size_t flight = 2;		// フライトピン
+
+	// LED
 	constexpr size_t led_arduino = 13;
-	// LEDピン番号(適宜書き換えて下さい)
 	constexpr size_t led1 = 3;	// LED1
 	constexpr size_t led2 = 4;	// LED2
 	constexpr size_t led3 = 5;	// LED3
 }
 
 // 動作モード
-enum class Mode {
-	standby,
-	launch,
-	parachute,
-	leafing,
+enum class Mode : uint8_t {
+	standby,			// スタンバイモード(ロック中)
+	flight,				// フライトモード(離床判定)
+	rising,				// 上昇モード(離床後6秒間)
+	parachute,			// パラシュートモード(開傘判定&開傘)
+	leafing,			// リーフィングモード(リーフィング判定&リーフィング)
 };
 
 // グローバル変数
@@ -46,7 +57,7 @@ void error();					// エラー(内蔵LED点滅)
 
 void setup(){
 	global::launch_time = millis();
-	global::mode = Mode::launch;
+	global::mode = Mode::standby;
 	Serial.begin(9600);
 
 	// LED初期設定
@@ -77,9 +88,10 @@ void loop(){
 
 	switch(global::mode){
 		case Mode::standby:
-			// 打ち上げまでにやることがあればやる
 			break;
-		case Mode::launch:
+		case Mode::flight:
+			break;
+		case Mode::rising:
 			if(time >= 6*1000){
 				digitalWrite(pin::led1, HIGH);
 				global::mode = Mode::parachute;
@@ -95,7 +107,7 @@ void loop(){
 			}
 			break;
 		case Mode::leafing:
-			// リーフィング判定
+			// リーフィング判定とリーフィング
 			if(altitude <= ALTITUDE_LEAFING){
 				digitalWrite(pin::led3, HIGH);	// リーフィング解除(のつもり)
 				Serial.println("leafing!");
@@ -114,7 +126,7 @@ void init_led(const size_t pin){
 
 void flightpin_handler(){
 	global::launch_time = millis();
-	global::mode = Mode::launch;
+	global::mode = Mode::flight;
 	detachInterrupt(digitalPinToInterrupt(pin::flight));
 }
 
