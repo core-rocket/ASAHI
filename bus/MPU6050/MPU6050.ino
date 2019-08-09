@@ -1,8 +1,15 @@
 // MPU6050のテスト用コード
 #include <Wire.h>
+#include <MsTimer2.h>
 #include "MPU6050.hpp"
 
 MPU6050 mpu;
+volatile MPU6050::data_t data;
+
+void update(){
+	interrupts();
+	data = mpu.get_data();
+}
 
 void setup(){
 	Serial.begin(9600);
@@ -16,11 +23,31 @@ void setup(){
 
 	Serial.println("MPU6050");
 	mpu.init();
+
+	MsTimer2::set(1000 / 100, update);
+	MsTimer2::start();
 }
 
 void loop(){
 	// MPU6050から加速度・温度・ジャイロデータを取得
-	auto data = mpu.get_data();
+	// data = mpu.get_data();
+
+/*
+	auto start = millis();
+	for(int i=0;i<10;i++){
+		data = mpu.get_data();
+	}
+	auto end = millis();
+	// 1度のデータ取得にかかる時間
+	Serial.println((end-start)/10.0);
+*/
+	// エラーだったらリセットをかける
+	if(mpu.get_error() != MPU6050::Error::No){
+		Serial.println("error");
+		TWCR=0;
+		Wire.begin();
+		mpu.init();
+	}
 
 	// 生のデータから実際の数値を計算する
 	// TODO	この式もMPU6050クラスで扱うようにするべきか考える
