@@ -10,10 +10,6 @@
 	#define ALTITUDE_PARACHUTE		135.0
 	#define ALTITUDE_LEAFING		120.0
 
-	#define TIME_RISING				6.0
-
-	#define TIMEOUT_PARACHUTE		12.5
-	#define TIMEOUT_LEAFING			16.0
 
 #else
 	// 本番用パラメータ
@@ -21,19 +17,19 @@
 	// また，シミュレーション担当の人間に確認を取ること．
 
 	// 高度の設定(単位は全てm)
-	//#define ALTITUDE_PARACHUTE				// 開傘高度(m)
-	#define ALTITUDE_LEAFING		315.0		// リーフィング解除高度(m)
-
-	// 時間の設定(単位は全て秒で，離床からの経過時刻を示す)
-	#define TIME_RISING				6.0			// 離床後開傘判定を開始する時間(s)
-
-	#define TIMEOUT_PARACHUTE		12.5		// 開傘を強制的に行う時間(s)
-	#define TIMEOUT_LEAFING			16.0		// リーフィングを強制的に行う時間(s)
-
+	//#define ALTITUDE_PARACHUTE						// 開傘高度(m)
+	#define ALTITUDE_LEAFING		315.0				// リーフィング解除高度(m)
 #endif
 
-#define BMP280_SAMPLING_RATE		100			// BMP280のサンプリングレート(Hz)
-#define BMP280_BUF_SIZE				5			// BMP280のバッファサイズ．移動平均のnでもある
+// 時間の設定(単位は全てミリ秒)
+// 離床からの経過時刻を示す)
+#define TIME_RISING				(6.0  * 1000)		// 離床後開傘判定を開始する時間
+
+#define TIMEOUT_PARACHUTE		(12.5 * 1000)		// 開傘を強制的に行う時間
+#define TIMEOUT_LEAFING			(16.0 * 1000)		// リーフィングを強制的に行う時間
+
+#define BMP280_SAMPLING_RATE	100					// BMP280のサンプリングレート(Hz)
+#define BMP280_BUF_SIZE			5					// BMP280のバッファサイズ．移動平均のnでもある
 
 // ピン設定
 namespace pin {
@@ -87,9 +83,6 @@ void setup(){
 
 	// LED初期設定
 	init_led(pin::led_arduino);
-//	init_led(pin::led1);
-//	init_led(pin::led2);
-//	init_led(pin::led3);
 
 	// i2c
 	Wire.begin();
@@ -98,10 +91,12 @@ void setup(){
 
 	// タイマ割り込み設定
 	MsTimer2::set(1000 / BMP280_SAMPLING_RATE, timer_handler);
-	MsTimer2::start();
 
-	// フライトピン割り込み設定
+	// フライトピン設定
 	pinMode(pin::flight, INPUT_PULLUP);
+
+	// 割り込み有効化
+	MsTimer2::start();
 	attachInterrupt(digitalPinToInterrupt(pin::flight), flightpin_handler, CHANGE);
 }
 
@@ -118,7 +113,7 @@ void loop(){
 		case Mode::flight:
 			break;
 		case Mode::rising:
-			if(time >= TIME_RISING*1000){
+			if(time >= TIME_RISING){
 				// digitalWrite(pin::led1, HIGH);
 				global::mode = Mode::parachute;
 				Serial.println("mode launch -> parachute");
