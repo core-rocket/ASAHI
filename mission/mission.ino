@@ -75,7 +75,7 @@ namespace sensor {
 	Adafruit_BMP280			bmp;	// BMP280
 }
 
-TWE_Lite twe(3, 4, 115200);
+TWE_Lite twe(4, 3, 38400);
 
 // 関数
 void init_led(const size_t pin);// LED初期設定
@@ -88,7 +88,7 @@ void error();					// エラー(内蔵LED点滅)
 void setup(){
 	global::launch_time = millis();
 	global::mode = Mode::standby;
-	Serial.begin(115200);
+	Serial.begin(38400);
 
 	// LED初期設定
 	init_led(pin::led_arduino);
@@ -151,6 +151,8 @@ void loop(){
 	send_telemetry();
 
 	Serial.println(altitude);
+
+	delay(100);
 }
 
 void init_led(const size_t pin){
