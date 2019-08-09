@@ -38,7 +38,7 @@ void timer_handler();	// タイマ割り込みハンドラ
 
 // 文字列でログを送る(あとで消す)
 void send_log(const char *str){
-	twelite.send_simple(0x01, 0x00, str);
+	twelite.send_simple(id_station, 0x00, str);
 	Serial.println(str);
 }
 
@@ -79,7 +79,7 @@ void loop(){
 
 //	Serial.print(global::loop_count - 1);
 //	Serial.print(" ");
-//	Serial.println(global::loop_time);
+	Serial.println(global::loop_time);
 
 //	Serial.print("GPS: ");
 //	for(size_t i=0;i<gps.available();i++){
@@ -88,6 +88,16 @@ void loop(){
 //			Serial.write((char)c);
 //	}
 //	Serial.println("");
+
+	// 受信
+	if(twelite.recv() != 0){
+		Serial.print("recv: ");
+		if(twelite.is_simple()){
+			Serial.println("simple");
+		}else{
+			Serial.println("extend");
+		}
+	}
 
 	// テレメトリ送信
 	send_telemetry();
@@ -115,8 +125,8 @@ void send_telemetry(){
 			m.gyro[2],
 		};
 
-		twelite.send_simple(0x64, 0x01, acc);
-		twelite.send_simple(0x64, 0x02, gyro);
+		twelite.send_simple(id_station, 0x01, acc);
+		twelite.send_simple(id_station, 0x02, gyro);
 
 		motion.pop();
 		motion_time.pop();
