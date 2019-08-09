@@ -10,7 +10,7 @@
 #define BRATE		38400
 
 // タイマー関数実行間隔(Hz)
-#define TIMER_HZ	100
+#define TIMER_HZ	10
 
 // センサ
 GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
@@ -90,7 +90,7 @@ void loop(){
 //	Serial.println("");
 
 	// 受信
-	if(twelite.recv() != 0){
+	if(twelite.try_recv(10)){
 		Serial.print("recv: ");
 		if(twelite.is_simple()){
 			Serial.println("simple");
@@ -101,7 +101,7 @@ void loop(){
 
 	// テレメトリ送信
 	send_telemetry();
-	delay(100);
+//	delay(100);
 }
 
 void send_telemetry(){
