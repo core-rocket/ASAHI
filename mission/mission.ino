@@ -2,20 +2,37 @@
 #include <Wire.h>				// i2c
 #include <Adafruit_BMP280.h>	// BMP280ライブラリ
 
+// 本番時はこの下の行をコメントアウトすること！！！！
 #define BBM
 
 #ifdef BBM		// BBM試験用パラメータ
 
-	#define ALTITUDE_PARACHUTE		135.0		// 開傘高度
-	#define ALTITUDE_LEAFING		120.0		// リーフィング解除高度
+	#define ALTITUDE_PARACHUTE		135.0
+	#define ALTITUDE_LEAFING		120.0
+
+	#define TIME_RISING				6.0
+
+	#define TIMEOUT_PARACHUTE		12.5
+	#define TIMEOUT_LEAFING			16.0
 
 #else
 	// 本番用パラメータ
-	#error please set altitude
+	// 設定には最新の搭載計器安全審査書を参考にすること．
+	// また，シミュレーション担当の人間に確認を取ること．
+
+	// 高度の設定(単位は全てm)
+	//#define ALTITUDE_PARACHUTE				// 開傘高度(m)
+	#define ALTITUDE_LEAFING		315.0		// リーフィング解除高度(m)
+
+	// 時間の設定(単位は全て秒で，離床からの経過時刻を示す)
+	#define TIME_RISING				6.0			// 離床後開傘判定を開始する時間(s)
+
+	#define TIMEOUT_PARACHUTE		12.5		// 開傘を強制的に行う時間(s)
+	#define TIMEOUT_LEAFING			16.0		// リーフィングを強制的に行う時間(s)
 
 #endif
 
-// BBM試験(2019/8/4)にて，BMP280を使って高度を推測し，それに基づいてモードの移行を行うことができることを確認
+#define BMP280_SAMPLING_RATE		100			// BMP280のサンプリングレート(Hz)
 
 // ピン設定
 namespace pin {
@@ -44,9 +61,9 @@ namespace global {
 	volatile unsigned long	launch_time = 0;	// 離床からの経過時刻
 
 	// BMP280
-	volatile float			temperature = 0.0;	// 最新の気温
-	volatile float			pressure	= 0.0;	// 最新の気圧
-	volatile float			altitude	= 0.0;	// 最新の高度
+	volatile float			temperature = 0.0;	// 最新の気温(℃ )
+	volatile float			pressure	= 0.0;	// 最新の気圧(Pa)
+	volatile float			altitude	= 0.0;	// 最新の高度(m)
 }
 
 // センサ
@@ -78,8 +95,7 @@ void setup(){
 		error();
 
 	// タイマ割り込み設定
-	// i2cはタイマ割り込みを使っているので割り込みハンドラ内でi2cアクセスをするなら多重割り込みを許可しなければならない
-	MsTimer2::set(1000 / 100, timer_handler); // 100Hzでタイマ割り込み
+	MsTimer2::set(1000 / BMP280_SAMPLING_RATE, timer_handler);
 	MsTimer2::start();
 
 	// フライトピン割り込み設定
@@ -98,7 +114,7 @@ void loop(){
 		case Mode::flight:
 			break;
 		case Mode::rising:
-			if(time >= 6*1000){
+			if(time >= TIME_RISING*1000){
 				// digitalWrite(pin::led1, HIGH);
 				global::mode = Mode::parachute;
 				Serial.println("mode launch -> parachute");
@@ -152,17 +168,15 @@ void timer_handler(){
 
 	// i2cを使うので一時的に割り込み許可
 	interrupts();
-	global::temperature	= sensor::bmp.readTemperature();	// 気温(C)
+	global::temperature	= sensor::bmp.readTemperature();	// 気温(℃ )
 	global::pressure	= sensor::bmp.readPressure();		// 気圧(Pa)
 	noInterrupts();
 
-	global::temperature	= global::temperature + 273.15;		// Kにする
-	global::pressure	= global::pressure / 100.0f;		// hPaにする
-
 	// 高度を計算する
-	const auto &t = global::temperature;
-	const auto &p = global::pressure;
-	global::altitude = (pow(1013.0/p, 1/5.257) - 1)*(t) / 0.0065;
+	constexpr float p_0 = 1013.0;					// 海面気圧(hPa)
+	const auto &t = global::temperature + 273.15;	// Kにする
+	const auto &p = global::pressure / 100.0f;		// hPaにする
+	global::altitude = ((pow(p_0/p, 1/5.257) - 1)*t) / 0.0065;
 }
 
 void error(){
