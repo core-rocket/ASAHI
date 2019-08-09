@@ -1,6 +1,9 @@
-#include <MsTimer2.h>
-#include <Wire.h>				// i2c
-#include <Adafruit_BMP280.h>	// BMP280ライブラリ
+#include <MsTimer2.h>					// タイマー
+#include <Wire.h>						// i2c
+#include <Adafruit_BMP280.h>			// BMP280ライブラリ
+
+#include "../TWE-Lite/TWE-Lite.hpp"		// TWE-Lite
+#include "../telemetry.hpp"
 
 // 本番時はこの下の行をコメントアウトすること！！！！
 #define BBM
@@ -58,10 +61,13 @@ namespace global {
 	volatile unsigned long	launch_time = 0;	// 離床からの経過時刻
 
 	// BMP280
-	volatile size_t			bmp_count	= 0;				// バッファ書き込み番号
-	volatile float			temperature[BMP280_BUF_SIZE];	// 気温(℃ )
-	volatile float			pressure[BMP280_BUF_SIZE];		// 気圧(Pa)
-	volatile float			altitude	= 0.0;				// 最新の高度(m)
+	volatile uint32_t	bmp_last_time	= 0;			// 最後にデータ取得した時刻
+	volatile size_t		bmp_count		= 0;			// バッファ書き込み番号
+	volatile float		temp_buf[BMP280_BUF_SIZE];		// 気温バッファ(℃ )
+	volatile float		press_buf[BMP280_BUF_SIZE];		// 気圧バッファ(Pa)
+	float				temperature		= 0.0;			// 移動平均をとった気温
+	float				pressure		= 0.0;			// 移動平均をとった気圧
+	float				altitude		= 0.0;			// 最新の高度(m)
 }
 
 // センサ
@@ -69,17 +75,20 @@ namespace sensor {
 	Adafruit_BMP280			bmp;	// BMP280
 }
 
+TWE_Lite twe(3, 4, 115200);
+
 // 関数
 void init_led(const size_t pin);// LED初期設定
 void flightpin_handler();		// フライトピンの割り込みハンドラ(離床判定)
 void timer_handler();			// タイマ割り込み関数
 void update_altitude();			// 高度を更新する
+void send_telemetry();			// テレメトリ送信(toバス部)
 void error();					// エラー(内蔵LED点滅)
 
 void setup(){
 	global::launch_time = millis();
 	global::mode = Mode::standby;
-	Serial.begin(9600);
+	Serial.begin(115200);
 
 	// LED初期設定
 	init_led(pin::led_arduino);
@@ -94,6 +103,9 @@ void setup(){
 
 	// フライトピン設定
 	pinMode(pin::flight, INPUT_PULLUP);
+
+	// TWE-Lite初期化
+	twe.init();
 
 	// 割り込み有効化
 	MsTimer2::start();
@@ -136,7 +148,9 @@ void loop(){
 			break;
 	}
 
-//	Serial.println(altitude);
+	send_telemetry();
+
+	Serial.println(altitude);
 }
 
 void init_led(const size_t pin){
@@ -160,10 +174,12 @@ void flightpin_handler(){
 void timer_handler(){
 	using namespace sensor;
 
+	global::bmp_last_time = millis();
+
 	// i2cを使うので一時的に割り込み許可
 	interrupts();
-	global::temperature[global::bmp_count]	= bmp.readTemperature();	// 気温(℃ )
-	global::pressure[global::bmp_count]		= bmp.readPressure();		// 気圧(Pa)
+	global::temp_buf[global::bmp_count]		= bmp.readTemperature();	// 気温(℃ )
+	global::press_buf[global::bmp_count]	= bmp.readPressure();		// 気圧(Pa)
 	noInterrupts();
 	global::bmp_count++;
 	if(global::bmp_count == BMP280_BUF_SIZE)
@@ -173,13 +189,16 @@ void timer_handler(){
 void update_altitude(){
 	constexpr float p_0 = 1013.0;					// 海面気圧(hPa)
 
-	float t = 0;
-	float p = 0;
+	float &t = global::temperature;
+	float &p = global::pressure;
+
+	t = 0.0;
+	p = 0.0;
 
 	// 移動平均を計算する
 	for(size_t i=0;i<BMP280_BUF_SIZE;i++){
-		t += global::temperature[i];
-		p += global::pressure[i];
+		t += global::temp_buf[i];
+		p += global::press_buf[i];
 	}
 	t = t / BMP280_BUF_SIZE;
 	p = p / BMP280_BUF_SIZE;
@@ -188,6 +207,23 @@ void update_altitude(){
 	p = p / 100.0f;		// hPaにする
 
 	global::altitude = ((pow(p_0/p, 1/5.257) - 1)*t) / 0.0065;
+}
+
+void send_telemetry(){
+	Float32 data;
+	data.time = global::bmp_last_time;
+
+	// 気温(K)
+	data.value = global::temperature;
+	twe.send_simple(id_bus, 0x04, data);
+
+	// 気圧(hPa)
+	data.value = global::pressure;
+	twe.send_simple(id_bus, 0x05, data);
+
+	// 高度(m)
+	data.value = global::altitude;
+	twe.send_simple(id_bus, 0x06, data);
 }
 
 void error(){

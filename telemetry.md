@@ -69,7 +69,8 @@
 |0x03|uint32_t + uint16_t|水密部温度|
 |0x04|uint32_t + float(4)|気温|
 |0x05|uint32_t + float(4)|気圧|
-|0x06|?|GPSのなんか|
+|0x06|uint32_t + float(4)|高度|
+|0x07|?|GPSのなんか|
 |0x7f|?|reserved|
 
 TODO: タイムスタンプつけるべきでは...
