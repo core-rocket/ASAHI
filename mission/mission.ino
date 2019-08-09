@@ -23,9 +23,9 @@ namespace pin {
 
 	// LED
 	constexpr size_t led_arduino = 13;
-	constexpr size_t led1 = 3;	// LED1
-	constexpr size_t led2 = 4;	// LED2
-	constexpr size_t led3 = 5;	// LED3
+//	constexpr size_t led1 = 3;	// LED1
+//	constexpr size_t led2 = 4;	// LED2
+//	constexpr size_t led3 = 5;	// LED3
 }
 
 // 動作モード
@@ -39,13 +39,19 @@ enum class Mode : uint8_t {
 
 // グローバル変数
 namespace global {
-	// 割り込みハンドラから弄る変数
-	volatile unsigned long	launch_time = 0;
-	volatile Mode			mode;
-	volatile float			altitude = 0.0;
+	// 割り込みハンドラから読み書きする変数
+	volatile Mode			mode;				// 動作モード
+	volatile unsigned long	launch_time = 0;	// 離床からの経過時刻
 
-	// デバイス
-	Adafruit_BMP280			bmp;
+	// BMP280
+	volatile float			temperature = 0.0;	// 最新の気温
+	volatile float			pressure	= 0.0;	// 最新の気圧
+	volatile float			altitude	= 0.0;	// 最新の高度
+}
+
+// センサ
+namespace sensor {
+	Adafruit_BMP280			bmp;	// BMP280
 }
 
 // 関数
@@ -62,19 +68,19 @@ void setup(){
 
 	// LED初期設定
 	init_led(pin::led_arduino);
-	init_led(pin::led1);
-	init_led(pin::led2);
-	init_led(pin::led3);
+//	init_led(pin::led1);
+//	init_led(pin::led2);
+//	init_led(pin::led3);
 
 	// i2c
 	Wire.begin();
-	if(!global::bmp.begin())	// BMP280
+	if(!sensor::bmp.begin())	// BMP280
 		error();
 
 	// タイマ割り込み設定
 	// i2cはタイマ割り込みを使っているので割り込みハンドラ内でi2cアクセスをするなら多重割り込みを許可しなければならない
 	MsTimer2::set(1000 / 100, timer_handler); // 100Hzでタイマ割り込み
-//	MsTimer2::start();
+	MsTimer2::start();
 
 	// フライトピン割り込み設定
 	pinMode(pin::flight, INPUT_PULLUP);
@@ -93,7 +99,7 @@ void loop(){
 			break;
 		case Mode::rising:
 			if(time >= 6*1000){
-				digitalWrite(pin::led1, HIGH);
+				// digitalWrite(pin::led1, HIGH);
 				global::mode = Mode::parachute;
 				Serial.println("mode launch -> parachute");
 			}
@@ -101,7 +107,7 @@ void loop(){
 		case Mode::parachute:
 			// 開傘判定と開傘
 			if(altitude >= ALTITUDE_PARACHUTE){
-				digitalWrite(pin::led2, HIGH);	// 開傘(のつもり)
+				// digitalWrite(pin::led2, HIGH);	// 開傘(のつもり)
 				global::mode = Mode::leafing;
 				Serial.println("mode parachute -> leafing");
 			}
@@ -109,13 +115,17 @@ void loop(){
 		case Mode::leafing:
 			// リーフィング判定とリーフィング
 			if(altitude <= ALTITUDE_LEAFING){
-				digitalWrite(pin::led3, HIGH);	// リーフィング解除(のつもり)
+				// digitalWrite(pin::led3, HIGH);	// リーフィング解除(のつもり)
 				Serial.println("leafing!");
 			}
 			break;
 	}
-	global::altitude = get_altitude();
-//	Serial.println(global::altitude);
+
+	Serial.print(global::temperature - 273.15);
+	Serial.print(" ");
+	Serial.print(global::pressure);
+	Serial.print(" ");
+	Serial.println(altitude);
 //	delay(100);
 }
 
@@ -125,22 +135,34 @@ void init_led(const size_t pin){
 }
 
 void flightpin_handler(){
-	global::launch_time = millis();
-	global::mode = Mode::flight;
-	detachInterrupt(digitalPinToInterrupt(pin::flight));
+	const auto t = millis();
+	if(global::mode != Mode::flight){		// フライトモード以外でフライトピンに変化があった
+		return;		// とりあえずなにもしない
+	}
+
+	// TODO: チャタリング検知?
+	detachInterrupt(digitalPinToInterrupt(pin::flight));	// ピン割り込みを解除
+
+	global::launch_time = t;		// 離床時刻
+	global::mode = Mode::flight;	// フライトモードに移行
 }
 
 void timer_handler(){
-	// 高度を更新
-	global::altitude = get_altitude();
-}
+	using namespace sensor;
 
-const float get_altitude(){
-	constexpr float p_0 = 1013.0;	// 大気圧(hPa)
-	const float t = global::bmp.readTemperature();		// C
-	const float p = global::bmp.readPressure() / 100.0f;// hPa
-	const float a = (pow(p_0/p, 1/5.257) - 1)*(t+273.15) / 0.0065;
-	return a;
+	// i2cを使うので一時的に割り込み許可
+	interrupts();
+	global::temperature	= sensor::bmp.readTemperature();	// 気温(C)
+	global::pressure	= sensor::bmp.readPressure();		// 気圧(Pa)
+	noInterrupts();
+
+	global::temperature	= global::temperature + 273.15;		// Kにする
+	global::pressure	= global::pressure / 100.0f;		// hPaにする
+
+	// 高度を計算する
+	const auto &t = global::temperature;
+	const auto &p = global::pressure;
+	global::altitude = (pow(1013.0/p, 1/5.257) - 1)*(t) / 0.0065;
 }
 
 void error(){
