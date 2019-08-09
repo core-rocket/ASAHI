@@ -124,7 +124,12 @@ public:
 
 	inline uint8_t sread8(){
 #ifdef ARDUINO
-		return serial->read();
+		int c = serial->read();
+		if(c < 0)
+			sread_error = true;
+		else
+			sread_error = false;
+		return static_cast<uint8_t>(c);
 #elif defined(RASPBERRY_PI)
 		return serialGetchar(fd);
 #else
@@ -260,16 +265,17 @@ public:
 	// 受信成功時trueを返す
 	// 受信失敗, タイムアウト時falseを返す
 	inline auto try_recv(const size_t &timeout) -> bool {
-		const size_t size = savail();
-		if(size <= 0) return false;
 		const auto start =
 			#ifdef NO_MILLIS
 				std::chrono::system_clock::now();
 			#else
 				millis();
 			#endif
-		for(size_t i=0;i<size;i++){
-			if(parser.parse8(sread8()))
+		while(true){
+			if(savail() == 0) break;
+			const uint8_t b = sread8();
+			if(sread_error) break;;
+			if(parser.parse8(b))
 				return true;
 
 			#ifdef NO_MILLIS
@@ -516,6 +522,7 @@ private:
 #else
 	int fd = 0;
 #endif
+	bool sread_error = false;
 };
 
 #endif
