@@ -3,7 +3,7 @@
 
 //#define RASPBERRY_PI
 #include "../TWE-Lite/TWE-Lite.hpp"
-#include "../telemetry.h"
+#include "../telemetry.hpp"
 
 #include "twelite.hpp"
 
