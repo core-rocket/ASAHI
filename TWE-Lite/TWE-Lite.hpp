@@ -125,11 +125,17 @@ public:
 	inline uint8_t sread8(){
 #ifdef ARDUINO
 		int c = serial->read();
-		if(c < 0)
+		if(c < 0){
 			sread_error = true;
-		else
+			return 0x00;
+		}else
 			sread_error = false;
-		return static_cast<uint8_t>(c);
+		uint8_t b = static_cast<uint8_t>(c);
+//		if(b == 0xA5)
+//			Serial.println("");
+//		Serial.print(b, HEX);
+//		Serial.write(" ");
+		return b;
 #elif defined(RASPBERRY_PI)
 		return serialGetchar(fd);
 #else
@@ -272,7 +278,7 @@ public:
 				millis();
 			#endif
 		while(true){
-			if(savail() == 0) break;
+			//if(savail() == 0) break;
 			const uint8_t b = sread8();
 			if(sread_error) break;;
 			if(parser.parse8(b))
@@ -293,7 +299,9 @@ public:
 
 	// 1byte受け取って受信成功したらtrueを返す
 	inline auto try_recv8() -> bool {
-		return parser.parse8(sread8());
+		uint8_t b = sread8();
+		if(sread_error) return false;
+		return parser.parse8(b);
 	}
 
 	// 受信データのパーサ(1byteずつパースする)
@@ -389,10 +397,10 @@ public:
 				//std::cout
 				//	<< "payload[" << std::dec << (uint32_t) payload_pos << "] = "
 				//	<< std::hex << (uint32_t)b << std::endl;
-				//Serial.print("payload[");
-				//Serial.print(payload_pos, DEC);
-				//Serial.print("] = ");
-				//Serial.println(b, HEX);
+				// Serial.print("payload[");
+				// Serial.print(payload_pos, DEC);
+				// Serial.print("] = ");
+				// Serial.println(b, HEX);
 
 				if(payload != nullptr && payload_pos < payload_bufsize)
 					payload[payload_pos] = b;
@@ -440,6 +448,7 @@ public:
 			switch(s){
 			case state::empty:
 				e = state::empty;
+				cmd_pos = 0;
 				if(b == 0xA5)
 					s = state::header;
 				break;
@@ -478,9 +487,12 @@ public:
 					s = state::empty;
 					cmd_pos = 0;
 					checksum = 0x00;
+					// Serial.println("checksum ok!!!!!!!!!!!");
 					return true;
-				}else
+				}else{
+					// Serial.println("fuck!!!!!!!!!!!!!!!!!!!!!!!!!!");
 					error();
+				}
 				break;
 			}
 			return false;
@@ -506,6 +518,7 @@ public:
 		size_t payload_bufsize = 0;
 
 		inline void error(){
+			// Serial.println("error");
 			e = s;
 			s = state::empty;
 		}
