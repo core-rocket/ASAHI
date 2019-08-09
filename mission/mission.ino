@@ -218,14 +218,17 @@ void send_telemetry(){
 	// 気温(K)
 	data.value = global::temperature;
 	twe.send_simple(id_bus, 0x04, data);
+	delay(100);
 
 	// 気圧(hPa)
 	data.value = global::pressure;
 	twe.send_simple(id_bus, 0x05, data);
+	delay(100);
 
 	// 高度(m)
 	data.value = global::altitude;
 	twe.send_simple(id_bus, 0x06, data);
+	delay(100);
 }
 
 void error(){
