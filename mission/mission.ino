@@ -1,6 +1,7 @@
 #include <MsTimer2.h>					// タイマー
 #include <Wire.h>						// i2c
 #include <Adafruit_BMP280.h>			// BMP280ライブラリ
+#include <Servo.h>						// サーボ
 
 #include "../TWE-Lite/TWE-Lite.hpp"		// TWE-Lite
 #include "../telemetry.hpp"
@@ -35,6 +36,8 @@
 // ピン設定
 namespace pin {
 	constexpr size_t flight = 2;		// フライトピン
+
+	constexpr size_t servo	= 9;
 
 	// LED
 	constexpr size_t led_arduino = 13;
@@ -75,7 +78,8 @@ namespace sensor {
 	Adafruit_BMP280			bmp;	// BMP280
 }
 
-TWE_Lite twe(4, 3, 38400);
+Servo		servo;
+TWE_Lite	twe(4, 3, 38400);
 
 // 関数
 void init_led(const size_t pin);// LED初期設定
@@ -103,6 +107,12 @@ void setup(){
 
 	// フライトピン設定
 	pinMode(pin::flight, INPUT_PULLUP);
+
+	// サーボ初期化
+	servo.attach(pin::servo);
+	servo.write(75);
+	delay(200);
+	servo.detach();
 
 	// TWE-Lite初期化
 	twe.init();
@@ -161,7 +171,10 @@ void loop(){
 			if(global::descent_count >= 4 || time > TIMEOUT_PARACHUTE){
 				Serial.println("do parachute!!!!");
 
-				// TODO: パラ展開
+				servo.attach(pin::servo);
+				servo.write(15);
+				delay(200);
+				servo.detach();
 
 				global::mode = Mode::leafing;
 				Serial.println("mode parachute -> leafing");
