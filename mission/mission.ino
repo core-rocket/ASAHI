@@ -59,6 +59,7 @@ namespace global {
 	// 割り込みハンドラから読み書きする変数
 	volatile Mode			mode;				// 動作モード
 	volatile unsigned long	launch_time = 0;	// 離床からの経過時刻
+	size_t					descent_count=0;	// 連続下降回数
 
 	// BMP280
 	volatile uint32_t	bmp_last_time	= 0;			// 最後にデータ取得した時刻
@@ -67,6 +68,7 @@ namespace global {
 	volatile float		press_buf[BMP280_BUF_SIZE];		// 気圧バッファ(Pa)
 	float				temperature		= 0.0;			// 移動平均をとった気温
 	float				pressure		= 0.0;			// 移動平均をとった気圧
+	float				last_altitude	= 0.0;			// 1つ前の高度
 	float				altitude		= 0.0;			// 最新の高度(m)
 }
 
@@ -87,7 +89,7 @@ void error();					// エラー(内蔵LED点滅)
 
 void setup(){
 	global::launch_time = millis();
-	global::mode = Mode::standby;
+	global::mode = Mode::flight;
 	Serial.begin(38400);
 
 	// LED初期設定
@@ -117,6 +119,7 @@ void loop(){
 	const auto time = millis() - launch_time;	// 離床からの時間
 
 	update_altitude();							// 高度を更新する
+	const auto& last_altitude = global::last_altitude;
 	const auto& altitude = global::altitude;
 
 	switch(global::mode){
@@ -148,11 +151,21 @@ void loop(){
 		case Mode::parachute:
 			// 開傘判定と開傘
 			Serial.println("mode: parachute");
-			if(altitude >= ALTITUDE_PARACHUTE){
-				// digitalWrite(pin::led2, HIGH);	// 開傘(のつもり)
+
+			// 下降しているかどうか
+			if(static_cast<int>(altitude*10) < static_cast<int>(last_altitude*10))
+				global::descent_count++;
+			else
+				global::descent_count = 0;
+
+			if(global::descent_count >= 4){		// 5回連続で下降
+				Serial.println("do parachute!!!!");
+				while(true);
+
 				global::mode = Mode::leafing;
 				Serial.println("mode parachute -> leafing");
 			}
+
 			break;
 		case Mode::leafing:
 			// リーフィング判定とリーフィング
@@ -166,7 +179,12 @@ void loop(){
 
 	send_telemetry();
 
-	Serial.println(altitude);
+	Serial.print("launch=");
+	Serial.print(global::launch_time);
+	Serial.print(", altitude=");
+	Serial.print(altitude);
+	Serial.print(", descent=");
+	Serial.println(global::descent_count);
 
 //	delay(100);
 }
@@ -186,7 +204,7 @@ void flightpin_handler(){
 	detachInterrupt(digitalPinToInterrupt(pin::flight));	// ピン割り込みを解除
 
 	global::launch_time = t;		// 離床時刻
-	global::mode = Mode::flight;	// フライトモードに移行
+	global::mode = Mode::rising;	// 飛翔モードに移行
 }
 
 void timer_handler(){
@@ -224,6 +242,7 @@ void update_altitude(){
 	t = t + 273.15;		// Kにする
 	p = p / 100.0f;		// hPaにする
 
+	global::last_altitude = global::altitude;
 	global::altitude = ((pow(p_0/p, 1/5.257) - 1)*t) / 0.0065;
 }
 
