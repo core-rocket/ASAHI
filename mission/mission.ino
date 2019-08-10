@@ -121,10 +121,24 @@ void loop(){
 
 	switch(global::mode){
 		case Mode::standby:
+			Serial.println("mode: standby");
+			if(twe.try_recv(100)){
+				if(twe.from_id() != id_bus)
+					break;
+				if(twe.is_extended()){
+					// コマンド
+					if(twe.response_id() == 0x02){		// フライトモード移行
+						global::mode = Mode::flight;
+						Serial.println("flight mode on");
+					}
+				}
+			}
 			break;
 		case Mode::flight:
+			Serial.println("mode: flight");
 			break;
 		case Mode::rising:
+			Serial.println("mode: rising");
 			if(time >= TIME_RISING){
 				// digitalWrite(pin::led1, HIGH);
 				global::mode = Mode::parachute;
@@ -133,6 +147,7 @@ void loop(){
 			break;
 		case Mode::parachute:
 			// 開傘判定と開傘
+			Serial.println("mode: parachute");
 			if(altitude >= ALTITUDE_PARACHUTE){
 				// digitalWrite(pin::led2, HIGH);	// 開傘(のつもり)
 				global::mode = Mode::leafing;
@@ -141,6 +156,7 @@ void loop(){
 			break;
 		case Mode::leafing:
 			// リーフィング判定とリーフィング
+			Serial.println("mode: leafing");
 			if(altitude <= ALTITUDE_LEAFING){
 				// digitalWrite(pin::led3, HIGH);	// リーフィング解除(のつもり)
 				Serial.println("leafing!");
@@ -152,7 +168,7 @@ void loop(){
 
 	Serial.println(altitude);
 
-	delay(100);
+//	delay(100);
 }
 
 void init_led(const size_t pin){
@@ -218,17 +234,17 @@ void send_telemetry(){
 	// 気温(K)
 	data.value = global::temperature;
 	twe.send_simple(id_bus, 0x04, data);
-	delay(100);
+	delay(10);
 
 	// 気圧(hPa)
 	data.value = global::pressure;
 	twe.send_simple(id_bus, 0x05, data);
-	delay(100);
+	delay(10);
 
 	// 高度(m)
 	data.value = global::altitude;
 	twe.send_simple(id_bus, 0x06, data);
-	delay(100);
+	delay(10);
 }
 
 void error(){
