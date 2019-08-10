@@ -10,7 +10,6 @@
 
 #ifdef BBM		// BBM試験用パラメータ
 
-	#define ALTITUDE_PARACHUTE		135.0
 	#define ALTITUDE_LEAFING		120.0
 
 
@@ -20,7 +19,6 @@
 	// また，シミュレーション担当の人間に確認を取ること．
 
 	// 高度の設定(単位は全てm)
-	//#define ALTITUDE_PARACHUTE						// 開傘高度(m)
 	#define ALTITUDE_LEAFING		315.0				// リーフィング解除高度(m)
 #endif
 
@@ -158,9 +156,12 @@ void loop(){
 			else
 				global::descent_count = 0;
 
-			if(global::descent_count >= 4){		// 5回連続で下降
+			// 開傘判定
+			// 5回連続で下降 or タイムアウト
+			if(global::descent_count >= 4 || time > TIMEOUT_PARACHUTE){
 				Serial.println("do parachute!!!!");
-				while(true);
+
+				// TODO: パラ展開
 
 				global::mode = Mode::leafing;
 				Serial.println("mode parachute -> leafing");
@@ -170,7 +171,10 @@ void loop(){
 		case Mode::leafing:
 			// リーフィング判定とリーフィング
 			Serial.println("mode: leafing");
-			if(altitude <= ALTITUDE_LEAFING){
+
+			// リーフィング判定
+			// 指定高度以下になったら or タイムアウト
+			if(altitude <= ALTITUDE_LEAFING || time > TIMEOUT_LEAFING){
 				// digitalWrite(pin::led3, HIGH);	// リーフィング解除(のつもり)
 				Serial.println("leafing!");
 			}
