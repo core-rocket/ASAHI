@@ -107,6 +107,7 @@ public:
 		//std::cout << std::hex << (int)val;
 #else
 		write(fd, &val, 1);
+		//std::cout << std::hex << (int)val;
 #endif
 	}
 	inline void swrite16_big(const uint16_t &val) const {
@@ -140,10 +141,13 @@ public:
 		return serialGetchar(fd);
 #else
 		char c;
-		if(read(fd, &c, 1) == 1)
+		if(read(fd, &c, 1) == 1){
+			sread_error = false;
 			return c;
-		return c;
-		return '\0';
+		}else{
+			sread_error = true;
+			return '\0';
+		}
 #endif
 	}
 

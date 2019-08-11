@@ -7,38 +7,49 @@
 
 #include "twelite.hpp"
 
-TWE_Lite twe("/dev/ttyUSB0", 115200);
+void parse_simple(const TWE_Lite *twe);
+void parse_extend(const TWE_Lite *twe);
 
-void parse_simple(const TWE_Lite &twe);
-void parse_extend(const TWE_Lite &twe);
+extern bool run_flag;
 
 namespace twelite {
+	TWE_Lite *twe = nullptr;
 	vec_t latest_acc = {};
 	vec_t latest_gyro= {};
 	std::queue<vec_t> acc, gyro;
+	std::queue<uint8_t> cmd_queue;
 }
 
 bool twelite::init(){
-	return twe.init();
+	twe = new TWE_Lite("/dev/ttyUSB0", 115200);
+	return twe->init();
 }
 
 void twelite::loop(){
-	while(true){
-		// 送信処理
+	while(run_flag){
+		// 送信
+		if(!cmd_queue.empty()){
+			std::cout << "sending command ... ";
+			twe->send_extend(id_bus, cmd_queue.front(), "A");
+			cmd_queue.pop();
+			std::cout << "[ok]" << std::endl;
+		}
 
 		// 受信
-		if(twe.recv() == 0) continue;
+		if(twe->recv(100) == 0) continue;
 
-		if(twe.is_response()){
-			if(twe.recv_buf[0] == 0x01){
+		if(twe->is_response()){
+			if(twe->recv_buf[0] == 0x01){
 				// 送信成功
+				std::cout << "send success" << std::endl;
 			}else{
 				// 送信失敗
+				std::cout << "send failed" << std::endl;
 			}
 			continue;
 		}
 
-		if(twe.is_simple())
+		if(twe->is_simple())
 			parse_simple(twe);
 		else
 			parse_extend(twe);
@@ -48,16 +59,16 @@ void twelite::loop(){
 	}
 }
 
-void get_string(const TWE_Lite &twe){
+void get_string(const TWE_Lite *twe){
 	std::cout << "string: \"";
-	for(size_t i=0;i<twe.get_length();i++){
-		std::cout << static_cast<char>(twe.recv_buf[i]);
+	for(size_t i=0;i<twe->get_length();i++){
+		std::cout << static_cast<char>(twe->recv_buf[i]);
 	}
-	std::cout << std::endl;
+	std::cout << "\"" << std::endl;
 }
 
-void get_acc(const TWE_Lite &twe){
-	auto *acc = twe.get_data<Vec16_t>();
+void get_acc(const TWE_Lite *twe){
+	auto *acc = twe->get_data<Vec16_t>();
 	if(acc == nullptr){
 		return;
 	}
@@ -75,8 +86,8 @@ void get_acc(const TWE_Lite &twe){
 	twelite::acc.push(twelite::latest_acc);
 }
 
-void get_gyro(const TWE_Lite &twe){
-	auto *gyro = twe.get_data<Vec16_t>();
+void get_gyro(const TWE_Lite *twe){
+	auto *gyro = twe->get_data<Vec16_t>();
 	if(gyro == nullptr){
 		return;
 	}
@@ -95,8 +106,8 @@ void get_gyro(const TWE_Lite &twe){
 }
 
 // 簡易形式で受信したデータをパースする
-void parse_simple(const TWE_Lite &twe){
-	switch(twe.cmd_type()){
+void parse_simple(const TWE_Lite *twe){
+	switch(twe->cmd_type()){
 		case 0x00:	// 文字列
 			get_string(twe);
 			break;
@@ -109,11 +120,11 @@ void parse_simple(const TWE_Lite &twe){
 		default:
 			std::cout
 				<< "unknown type data(simple format)" << std::endl
-				<< "\tcmd_type = 0x" << std::hex << static_cast<uint32_t>(twe.cmd_type()) << std::endl
-				<< "\tlength = " << std::dec << twe.get_length() << std::endl;
+				<< "\tcmd_type = 0x" << std::hex << static_cast<uint32_t>(twe->cmd_type()) << std::endl
+				<< "\tlength = " << std::dec << twe->get_length() << std::endl;
 	}
 }
 
-void parse_extend(const TWE_Lite &twe){
+void parse_extend(const TWE_Lite *twe){
 	std::cout << "parse_extend " << std::endl;
 }
