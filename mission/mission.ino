@@ -91,7 +91,7 @@ void error();					// エラー(内蔵LED点滅)
 
 void setup(){
 	global::launch_time = millis();
-	global::mode = Mode::flight;
+	global::mode = Mode::standby;
 	Serial.begin(38400);
 
 	// LED初期設定
@@ -137,7 +137,9 @@ void loop(){
 	switch(global::mode){
 		case Mode::standby:
 			Serial.println("mode: standby");
+			delay(300);
 			if(twe.try_recv(100)){
+				Serial.println("recv");
 				if(twe.from_id() != id_bus)
 					break;
 				if(twe.is_extended()){
@@ -271,6 +273,8 @@ void send_telemetry(){
 	Float32 data;
 	data.time = global::bmp_last_time;
 
+	//Serial.println("send telem");
+
 	// 気温(K)
 	data.value = global::temperature;
 	twe.send_simple(id_bus, 0x04, data);
@@ -285,6 +289,12 @@ void send_telemetry(){
 	data.value = global::altitude;
 	twe.send_simple(id_bus, 0x06, data);
 	delay(10);
+
+//	if(twe.try_recv(100)){
+//		Serial.println("recv");
+//		if(twe.is_response())
+//			Serial.println("response");
+//	}
 }
 
 void error(){
