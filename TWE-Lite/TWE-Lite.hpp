@@ -83,7 +83,7 @@ public:
 			#endif
 			serial->begin(brate);
 		#else
-			fd = open(devfile.c_str(), O_RDWR | O_NOCTTY);
+			fd = open(devfile.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
 			termios setting;
 			setting.c_cflag = B115200 | CRTSCTS | CS8 | CLOCAL | CREAD;
 			setting.c_iflag = IGNPAR;
