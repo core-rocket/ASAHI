@@ -99,6 +99,9 @@ void loop(){
 		}
 	}
 
+	// ミッション部へのコマンド送信テスト
+	twelite.send_extend(id_mission, 0x02, " ");
+
 	// テレメトリ送信
 	send_telemetry();
 //	delay(100);
