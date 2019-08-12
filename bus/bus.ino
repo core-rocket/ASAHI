@@ -19,11 +19,18 @@ MPU6050 mpu;
 // 無線機
 TWE_Lite twelite(6, 5, BRATE);
 
+enum class Mode {
+	standby,
+	flight,
+};
+
 // グローバル変数
 namespace global {
 	size_t loop_count = 0;				// 何回目のloopか
 	unsigned long loop_time = 0;		// 1回のloopにかかった時間
 	unsigned long last_loop_time = 0;
+
+	Mode mode;
 }
 
 // センサデータ
@@ -40,6 +47,7 @@ void timer_handler();	// タイマ割り込みハンドラ
 void send_log(const char *str){
 	twelite.send_simple(id_station, 0x00, str);
 	Serial.println(str);
+	delay(100);
 }
 
 // 初期化関数．起動時, リセット時に実行される．
@@ -58,6 +66,8 @@ void setup(){
 	mpu.init();
 	MsTimer2::set(1000 / TIMER_HZ, timer_handler);
 	send_log("finish");
+
+	global::mode = Mode::standby;
 
 	//TODO: 動作モードをSDカードから読み込む
 	// (動作中に瞬断して再起動する可能性がある)
@@ -89,18 +99,33 @@ void loop(){
 //	}
 //	Serial.println("");
 
+	if(global::mode == Mode::standby)
+		delay(300);
+
 	// 受信
-	if(twelite.try_recv(10)){
+	if(twelite.try_recv(100)){
 		Serial.print("recv: ");
+		send_log("recv");
+
+		if(twelite.is_response())
+			Serial.println("response");
+
 		if(twelite.is_simple()){
 			Serial.println("simple");
 		}else{
 			Serial.println("extend");
+			if(twelite.response_id() == 0x02){
+				global::mode = Mode::flight;
+				send_log("flight mode on");
+			}
 		}
 	}
 
 	// ミッション部へのコマンド送信テスト
-	twelite.send_extend(id_mission, 0x02, " ");
+	if(global::mode == Mode::flight){
+		twelite.send_extend(id_mission, 0x02, " ");
+		Serial.println("send flight mode command");
+	}
 
 	// テレメトリ送信
 	send_telemetry();
