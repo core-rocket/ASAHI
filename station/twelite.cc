@@ -29,10 +29,10 @@ void twelite::loop(){
 	while(run_flag){
 		// 送信
 		if(!cmd_queue.empty()){
-			std::cout << "sending command ... ";
+			std::cout << "sending command ... \t";
 			twe->send_extend(id_bus, cmd_queue.front(), "A");
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			cmd_queue.pop();
-			std::cout << "[ok]" << std::endl;
 		}
 
 		// 受信
@@ -41,10 +41,10 @@ void twelite::loop(){
 		if(twe->is_response()){
 			if(twe->recv_buf[0] == 0x01){
 				// 送信成功
-				std::cout << "send success" << std::endl;
+				std::cout << "[success]" << std::endl;
 			}else{
 				// 送信失敗
-				std::cout << "send failed" << std::endl;
+				std::cout << "[failed]" << std::endl;
 			}
 			continue;
 		}

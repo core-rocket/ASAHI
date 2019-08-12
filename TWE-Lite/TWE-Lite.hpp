@@ -51,6 +51,8 @@ public:
 				serialFlush(fd);
 				serialClose(fd);
 			}
+		#else
+			close(fd);
 		#endif
 	}
 
@@ -83,16 +85,22 @@ public:
 			#endif
 			serial->begin(brate);
 		#else
-			fd = open(devfile.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+			fd = open(devfile.c_str(), O_RDWR | O_NOCTTY | O_SYNC /*O_NDELAY*/ /*| O_NONBLOCK*/);
 			termios setting;
-			setting.c_cflag = B115200 | CRTSCTS | CS8 | CLOCAL | CREAD;
-			setting.c_iflag = IGNPAR;
-			setting.c_oflag = 0;
-			setting.c_lflag = 0;	// non-canonical, no-echo
-			setting.c_cc[VTIME]	= 0;
-			setting.c_cc[VMIN]	= 1;
+			memset(&setting, 0, sizeof(setting));
 
-			tcflush(fd, TCIFLUSH);
+			cfsetispeed(&setting, B115200);
+			cfsetospeed(&setting, B115200);
+
+			setting.c_cflag = (setting.c_cflag & ~CSIZE) | CS8;
+			setting.c_cflag |= (/*CRTSCTS |*/ CLOCAL | CREAD);
+			setting.c_iflag = 0; //IGNPAR;
+			setting.c_oflag = 0;
+			setting.c_lflag = 0;		// non-canonical, no-echo
+			setting.c_cc[VTIME]	= 0;	// no block
+			setting.c_cc[VMIN]	= 1;	// 0.1 sec read timeout
+
+			tcflush(fd, TCIOFLUSH);
 			tcsetattr(fd, TCSANOW, &setting);
 		#endif
 		return true;
