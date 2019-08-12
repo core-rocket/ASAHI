@@ -99,11 +99,8 @@ void loop(){
 //	}
 //	Serial.println("");
 
-	if(global::mode == Mode::standby)
-		delay(300);
-
 	// 受信
-	if(twelite.try_recv(100)){
+	if(twelite.try_recv(10)){
 		Serial.print("recv: ");
 		send_log("recv");
 
