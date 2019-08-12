@@ -42,7 +42,8 @@ int main(int argc, char **argv){
 			std::cout << "gyro: ";
 			print_vec(gyro);
 		}else if(cmd == "unlock"){
-			cmd_queue.push(0x02);
+			for(size_t i=0;i<3;i++)
+				cmd_queue.push(0x02);
 		}
 	}
 

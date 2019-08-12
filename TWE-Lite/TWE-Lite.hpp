@@ -115,7 +115,7 @@ public:
 		//std::cout << std::hex << (int)val;
 #else
 		write(fd, &val, 1);
-		//std::cout << std::hex << (int)val;
+		//std::cout << " " << std::hex << (int)val;
 #endif
 	}
 	inline void swrite16_big(const uint16_t &val) const {

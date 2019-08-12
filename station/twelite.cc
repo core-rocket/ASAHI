@@ -41,7 +41,7 @@ void twelite::loop(){
 		if(twe->is_response()){
 			if(twe->recv_buf[0] == 0x01){
 				// 送信成功
-				std::cout << "[success]" << std::endl;
+				std::cout << "[success: " << (int)twe->response_id() << "]" << std::endl;
 			}else{
 				// 送信失敗
 				std::cout << "[failed]" << std::endl;
