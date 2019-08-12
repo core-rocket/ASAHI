@@ -17,7 +17,7 @@ GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化す
 MPU6050 mpu;
 
 // 無線機
-TWE_Lite twelite(6, 5, BRATE);
+TWE_Lite twelite(4, 3, BRATE);
 
 enum class Mode {
 	standby,
