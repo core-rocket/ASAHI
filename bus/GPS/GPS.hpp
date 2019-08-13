@@ -56,6 +56,12 @@ public:
 	void cold_start(){		send_cmd("103"); }
 	void full_cold_start(){	send_cmd("104"); }
 
+	void set_interval(const size_t ms){
+		char cmd[20];
+		sprintf(cmd, "220,%u", ms);
+		send_cmd(cmd);
+	}
+
 	inline auto read() const -> int {
 		#ifdef GPS_USE_SOFTWARE_SERIAL
 			serial->listen();
