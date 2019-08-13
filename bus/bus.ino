@@ -7,10 +7,11 @@
 #include "queue.hpp"
 
 // ボードレート
-#define BRATE		38400
+#define BRATE				38400
 
-// タイマー関数実行間隔(Hz)
-#define TIMER_HZ	10
+// サンプリングレート(Hz)
+#define INIT_SAMPLING_RATE	10
+#define SAMPLING_RATE		100
 
 // センサ
 GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
@@ -23,6 +24,12 @@ enum class Mode {
 	standby,
 	flight,
 };
+
+namespace timer {
+	// タイマ割り込み間隔(ms)
+	constexpr size_t init_dt	= 1000 / INIT_SAMPLING_RATE;
+	constexpr size_t dt			= 1000 / SAMPLING_RATE;
+}
 
 // グローバル変数
 namespace global {
@@ -64,7 +71,7 @@ void setup(){
 	send_log("sensor init");
 	Wire.begin();
 	mpu.init();
-	MsTimer2::set(1000 / TIMER_HZ, timer_handler);
+	MsTimer2::set(timer::init_dt, timer_handler);
 	send_log("finish");
 
 	global::mode = Mode::standby;
@@ -89,15 +96,17 @@ void loop(){
 
 //	Serial.print(global::loop_count - 1);
 //	Serial.print(" ");
-	Serial.println(global::loop_time);
+//	Serial.println(global::loop_time);
 
-//	Serial.print("GPS: ");
-//	for(size_t i=0;i<gps.available();i++){
-//		const int c = gps.read();
-//		if(c >= 0)
-//			Serial.write((char)c);
-//	}
-//	Serial.println("");
+	if(gps.available() != 0){
+//		Serial.print("GPS: ");
+		for(size_t i=0;i<gps.available();i++){
+			const int c = gps.read();
+			if(c >= 0)
+				Serial.write((char)c);
+		}
+//		Serial.println("");
+	}
 
 	// 受信
 	if(twelite.try_recv(10)){
@@ -114,13 +123,16 @@ void loop(){
 			if(twelite.response_id() == 0x02){
 				global::mode = Mode::flight;
 				send_log("flight mode on");
+				MsTimer2::stop();
+				MsTimer2::set(timer::dt, timer_handler);
+				MsTimer2::start();
 			}
 		}
 	}
 
 	// ミッション部へのコマンド送信テスト
 	if(global::mode == Mode::flight){
-		twelite.send_extend(id_mission, 0x02, " ");
+//		twelite.send_extend(id_mission, 0x02, " ");
 		Serial.println("send flight mode command");
 	}
 
@@ -132,7 +144,7 @@ void loop(){
 void send_telemetry(){
 	using namespace sensor_data;
 
-	Serial.println(motion.size());
+//	Serial.println(motion.size());
 
 	for(size_t i=0;i<motion.size();i++){
 		const auto &m = motion.front();
