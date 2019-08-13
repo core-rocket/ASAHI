@@ -9,13 +9,22 @@
 #else
 	// others
 	#include <cstdio>
+	#include <cstring>
 	#include <string>
+	using std::strlen;
 	#ifdef _WIN32
 		#error fuck Windows
 	#elif defined(RASPBERRY_PI)
 		// Raspberry Pi
 		#include <wiringPi.h>
 		#include <wiringSerial.h>
+	#else
+		#define NO_MILLIS
+		// Linux
+		#include <chrono>
+		#include <unistd.h>
+		#include <fcntl.h>
+		#include <termios.h>
 	#endif
 #endif
 
@@ -35,18 +44,14 @@ public:
 
 	// デストラクタ
 	~TWE_Lite(){
-#ifdef ARDUINO
-		// 特にやることなし(そもそもデストラクタが呼ばれるべきではない)
-#else
-	if(fd != 0){
-	#ifdef RASPBERRY_PI
-		serialFlush(fd);
-		serialClose(fd);
-	#else
-		std::fclose(fd);
-	#endif
-	}
-#endif
+		#ifdef ARDUINO
+			// 特にやることなし(そもそもデストラクタが呼ばれるべきではない)
+		#elif defined(RASPBERRY_PI)
+			if(fd != 0){
+				serialFlush(fd);
+				serialClose(fd);
+			}
+		#endif
 	}
 
 	// 定数
@@ -75,9 +80,21 @@ public:
 				serial = &Serial;
 			#else
 				serial = new SoftwareSerial(rx, tx);
+			#endif
+			serial->begin(brate);
+		#else
+			fd = open(devfile.c_str(), O_RDWR | O_NOCTTY);
+			termios setting;
+			setting.c_cflag = B115200 | CRTSCTS | CS8 | CLOCAL | CREAD;
+			setting.c_iflag = IGNPAR;
+			setting.c_oflag = 0;
+			setting.c_lflag = 0;	// non-canonical, no-echo
+			setting.c_cc[VTIME]	= 0;
+			setting.c_cc[VMIN]	= 1;
+
+			tcflush(fd, TCIFLUSH);
+			tcsetattr(fd, TCSANOW, &setting);
 		#endif
-		serial->begin(brate);
-#endif
 		return true;
 	}
 
@@ -88,6 +105,8 @@ public:
 #elif defined(RASPBERRY_PI)
 		serialPutchar(fd, val);
 		//std::cout << std::hex << (int)val;
+#else
+		write(fd, &val, 1);
 #endif
 	}
 	inline void swrite16_big(const uint16_t &val) const {
@@ -105,9 +124,26 @@ public:
 
 	inline uint8_t sread8(){
 #ifdef ARDUINO
-		return serial->read();
+		int c = serial->read();
+		if(c < 0){
+			sread_error = true;
+			return 0x00;
+		}else
+			sread_error = false;
+		uint8_t b = static_cast<uint8_t>(c);
+//		if(b == 0xA5)
+//			Serial.println("");
+//		Serial.print(b, HEX);
+//		Serial.write(" ");
+		return b;
 #elif defined(RASPBERRY_PI)
 		return serialGetchar(fd);
+#else
+		char c;
+		if(read(fd, &c, 1) == 1)
+			return c;
+		return c;
+		return '\0';
 #endif
 	}
 
@@ -116,6 +152,8 @@ public:
 		return serial->available();
 #elif defined(RASPBERRY_PI)
 		return serialDataAvail(fd);
+#else
+		return 1;
 #endif
 	}
 
@@ -124,10 +162,18 @@ public:
 		send_buf_simple(id, type, &data, sizeof(T));
 	};
 
+	void send_simple(const uint8_t id, const uint8_t type, const char *str){
+		send_buf_simple(id, type, str, strlen(str));
+	}
+
 	template<typename T>
 	void send_extend(const uint8_t id, const uint8_t response_id, const T &data){
 		send_buf_extend(id, response_id, &data, sizeof(T));
 	};
+
+	void send_extend(const uint8_t id, const uint8_t response_id, const char *str){
+		send_buf_extend(id, response_id, str, strlen(str));
+	}
 
 	// 任意のバッファを簡易形式で送信する(typeは0x80未満任意)
 	void send_buf_simple(const uint8_t id, const uint8_t type, const void *buf, const size_t &size) const {
@@ -215,6 +261,8 @@ public:
 	inline const uint8_t response_id()const { return parser.get_response_id();}
 	inline const uint8_t LQI()        const { return parser.get_LQI(); }
 
+	inline const uint16_t get_length() const { return parser.get_length(); }
+
 	inline const uint32_t from_ext_addr() const { return parser.get_from_ext_addr();}
 	inline const uint32_t my_ext_addr()   const { return parser.get_my_ext_addr();}
 
@@ -223,13 +271,27 @@ public:
 	// 受信成功時trueを返す
 	// 受信失敗, タイムアウト時falseを返す
 	inline auto try_recv(const size_t &timeout) -> bool {
-		const size_t size = savail();
-		if(size <= 0) return false;
-		const auto start = millis();	// TODO: Arduino,Raspberry Pi以外では使えない
-		for(size_t i=0;i<size;i++){
-			if(parser.parse8(sread8()))
+		const auto start =
+			#ifdef NO_MILLIS
+				std::chrono::system_clock::now();
+			#else
+				millis();
+			#endif
+		while(true){
+			//if(savail() == 0) break;
+			const uint8_t b = sread8();
+			if(sread_error) break;;
+			if(parser.parse8(b))
 				return true;
-			if((millis() - start) >= timeout)
+
+			#ifdef NO_MILLIS
+				const auto end = std::chrono::system_clock::now();
+				const double e = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+				const size_t elapsed = static_cast<size_t>(e);
+			#else
+				const auto elapsed = millis() - start;
+			#endif
+			if(elapsed >= timeout)
 				break;
 		}
 		return false;
@@ -237,7 +299,9 @@ public:
 
 	// 1byte受け取って受信成功したらtrueを返す
 	inline auto try_recv8() -> bool {
-		return parser.parse8(sread8());
+		uint8_t b = sread8();
+		if(sread_error) return false;
+		return parser.parse8(b);
 	}
 
 	// 受信データのパーサ(1byteずつパースする)
@@ -333,10 +397,10 @@ public:
 				//std::cout
 				//	<< "payload[" << std::dec << (uint32_t) payload_pos << "] = "
 				//	<< std::hex << (uint32_t)b << std::endl;
-				//Serial.print("payload[");
-				//Serial.print(payload_pos, DEC);
-				//Serial.print("] = ");
-				//Serial.println(b, HEX);
+				// Serial.print("payload[");
+				// Serial.print(payload_pos, DEC);
+				// Serial.print("] = ");
+				// Serial.println(b, HEX);
 
 				if(payload != nullptr && payload_pos < payload_bufsize)
 					payload[payload_pos] = b;
@@ -384,6 +448,7 @@ public:
 			switch(s){
 			case state::empty:
 				e = state::empty;
+				cmd_pos = 0;
 				if(b == 0xA5)
 					s = state::header;
 				break;
@@ -422,9 +487,12 @@ public:
 					s = state::empty;
 					cmd_pos = 0;
 					checksum = 0x00;
+					// Serial.println("checksum ok!!!!!!!!!!!");
 					return true;
-				}else
+				}else{
+					// Serial.println("fuck!!!!!!!!!!!!!!!!!!!!!!!!!!");
 					error();
+				}
 				break;
 			}
 			return false;
@@ -450,6 +518,7 @@ public:
 		size_t payload_bufsize = 0;
 
 		inline void error(){
+			// Serial.println("error");
 			e = s;
 			s = state::empty;
 		}
@@ -462,9 +531,11 @@ private:
 	#else
 	SoftwareSerial *serial = nullptr;
 	#endif
+//#elif defined(RASPBERRY_PI)
 #else
 	int fd = 0;
 #endif
+	bool sread_error = false;
 };
 
 #endif

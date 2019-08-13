@@ -26,7 +26,11 @@ int main(int argc, char **argv){
 
 		if(!twelite.is_simple()) continue;
 
-		if(twelite.cmd_type() == 0x02){
+		if(twelite.cmd_type() == 0x00){
+			std::cout
+				<< "recieve string" << std::endl
+				<< "\t" << twelite.recv_buf << std::endl;
+		}else if(twelite.cmd_type() == 0x02){
 			auto *hoge = twelite.get_data<Hoge>();
 			if(hoge == nullptr)
 				continue;
@@ -56,7 +60,7 @@ int main(int argc, char **argv){
 				<< "recieve motion" << std::endl
 				<< "\tacc[0]" << motion->acc[0] << std::endl;
 		}else{
-			std::cout << "recieve(" << twelite.cmd_type() << ")" << std::endl;
+			std::cout << "recieve(" << std::hex << (uint32_t)twelite.cmd_type() << ")" << std::endl;
 		}
 	}
 

@@ -1,90 +1,190 @@
-#define TWE_LITE_USE_HARDWARE_SERIAL
+#include <MsTimer2.h>				// タイマ
 #include "../TWE-Lite/TWE-Lite.hpp"
+#include "../telemetry.hpp"
+#define GPS_USE_HARDWARE_SERIAL
 #include "GPS/GPS.hpp"
 #include "MPU6050/MPU6050.hpp"
+#include "queue.hpp"
 
 // ボードレート
-#define BRATE	38400
+#define BRATE				38400
 
-// 動作モード
-enum class Mode : char {
-	Wait,		// ウェイトモード．コマンド受領までなにもしないをする．
-	Standby,	// スタンバイモード．離床判定を行う．
-	Flight,		// フライトモード．離床〜開傘まで．
-	Descent,	// ディセントモード．開傘〜着水まで．
+// サンプリングレート(Hz)
+#define INIT_SAMPLING_RATE	10
+#define SAMPLING_RATE		100
+
+// センサ
+GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
+MPU6050 mpu;
+
+// 無線機
+TWE_Lite twelite(4, 3, BRATE);
+
+enum class Mode {
+	standby,
+	flight,
 };
 
-//#define NO_GPS
-//#define NO_TWE
+namespace timer {
+	// タイマ割り込み間隔(ms)
+	constexpr size_t init_dt	= 1000 / INIT_SAMPLING_RATE;
+	constexpr size_t dt			= 1000 / SAMPLING_RATE;
+}
 
 // グローバル変数
-Mode g_mode;
-MPU6050 mpu;
-#ifndef NO_GPS
-	GPS gps(5, 6);
-#endif
-#ifndef NO_TWE
-	TWE_Lite twelite(0, 1, BRATE);
-#endif
+namespace global {
+	size_t loop_count = 0;				// 何回目のloopか
+	unsigned long loop_time = 0;		// 1回のloopにかかった時間
+	unsigned long last_loop_time = 0;
 
-// 初期化関数．一度だけ実行される．
+	Mode mode;
+}
+
+// センサデータ
+namespace sensor_data {
+	volatile queue<MPU6050::data_t, 10> motion;
+	volatile queue<unsigned long, 10> motion_time;
+}
+
+// 関数
+void send_telemetry();	// テレメトリ送信
+void timer_handler();	// タイマ割り込みハンドラ
+
+// 文字列でログを送る(あとで消す)
+void send_log(const char *str){
+	twelite.send_simple(id_station, 0x00, str);
+	Serial.println(str);
+	delay(100);
+}
+
+// 初期化関数．起動時, リセット時に実行される．
 void setup(){
-	Serial.begin(BRATE);
+	// GPS初期化
+	gps.init();		// baud変更があるので初めに初期化
+	delay(1000);	// 念の為少し待つ
 
-	//TODO: センサ初期化
+	// 無線機初期化
+	twelite.init();
+	send_log("setup");
+
+	// センサ初期化
+	send_log("sensor init");
 	Wire.begin();
 	mpu.init();
-#ifndef NO_GPS
-	gps.init(BRATE);
-	delay(1000);
-#endif
+	MsTimer2::set(timer::init_dt, timer_handler);
+	send_log("finish");
 
-	//TODO: TWE-Lite初期化
-#ifndef NO_TWE
-	twelite.init();
-#endif
+	global::mode = Mode::standby;
 
 	//TODO: 動作モードをSDカードから読み込む
 	// (動作中に瞬断して再起動する可能性がある)
-	if(g_mode != Mode::Standby)
-		return;		// 再起動時は早くそのモードの動作に戻る
+//	if(g_mode != Mode::Standby)
+//		return;		// 再起動時は早くそのモードの動作に戻る
 	//TODO: 地上局に起動を通知
+
+	// タイマスタート
+	MsTimer2::start();
 }
 
+// メインループ
 void loop(){
-	switch(g_mode){
-		case Mode::Wait:
-			break;
-		case Mode::Standby:
-			break;
-		case Mode::Flight:
-			break;
-		case Mode::Descent:
-			break;
+	const uint32_t now = millis();
+	global::loop_time = now - global::last_loop_time;
+	global::last_loop_time = now;
+
+	global::loop_count++;
+
+//	Serial.print(global::loop_count - 1);
+//	Serial.print(" ");
+//	Serial.println(global::loop_time);
+
+	if(gps.available() != 0){
+//		Serial.print("GPS: ");
+		for(size_t i=0;i<gps.available();i++){
+			const int c = gps.read();
+			if(c >= 0)
+				Serial.write((char)c);
+		}
+//		Serial.println("");
 	}
 
-	auto motion = mpu.get_data();
-	Serial.print("acc[0] = ");
-	Serial.println(static_cast<float>(motion.acc[0]) / 16384.0);
+	// 受信
+	if(twelite.try_recv(10)){
+		Serial.print("recv: ");
+		send_log("recv");
 
-#ifndef NO_GPS
-	Serial.print("GPS: ");
-	for(size_t i=0;i<500;i++){
-		const int c = gps.read();
-		if(c >= 0)
-			Serial.write((char)c);
-	}
-	Serial.println("");
-#endif
+		if(twelite.is_response())
+			Serial.println("response");
 
-#ifndef NO_TWE
-	//TODO: テレメトリ送信
-	twelite.send_simple(0x01, 0x04, static_cast<float>(motion.acc[0]) / 16384.0);
-	if(twelite.check_send() == 1){
-		Serial.println("TWE-Lite send success");
-	}else{
-		Serial.println("TWE-Lite send failed");
+		if(twelite.is_simple()){
+			Serial.println("simple");
+		}else{
+			Serial.println("extend");
+			if(twelite.response_id() == 0x02){
+				global::mode = Mode::flight;
+				send_log("flight mode on");
+				MsTimer2::stop();
+				MsTimer2::set(timer::dt, timer_handler);
+				MsTimer2::start();
+			}
+		}
 	}
-#endif
-	delay(300);
+
+	// ミッション部へのコマンド送信テスト
+	if(global::mode == Mode::flight){
+//		twelite.send_extend(id_mission, 0x02, " ");
+		Serial.println("send flight mode command");
+	}
+
+	// テレメトリ送信
+	send_telemetry();
+//	delay(100);
+}
+
+void send_telemetry(){
+	using namespace sensor_data;
+
+//	Serial.println(motion.size());
+
+	for(size_t i=0;i<motion.size();i++){
+		const auto &m = motion.front();
+		const auto &t = motion_time.front();
+		const Vec16_t acc = {
+			t,
+			m.acc[0],
+			m.acc[1],
+			m.acc[2],
+		};
+		const Vec16_t gyro= {
+			t,
+			m.gyro[0],
+			m.gyro[1],
+			m.gyro[2],
+		};
+
+		twelite.send_simple(id_station, 0x01, acc);
+		twelite.send_simple(id_station, 0x02, gyro);
+
+		motion.pop();
+		motion_time.pop();
+	}
+
+}
+
+void timer_handler(){
+	using namespace sensor_data;
+	static size_t count = 0;
+
+	const auto t = millis();
+
+	interrupts();	// 割り込み許可
+	auto m = mpu.get_data();
+	noInterrupts();	// 割り込み禁止
+
+	if(count % 5 == 0){
+		motion_time.push(t);
+		motion.push(m);
+	}
+
+	count++;
 }
