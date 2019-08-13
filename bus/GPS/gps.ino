@@ -22,9 +22,26 @@ void loop(){
 //		Serial.write(" ");
 //	}
 
-	if(gps.parse()){
+//	if(gps.parse()){
 //		Serial.println("success");
+//	}
+
+
+	while(gps.available() != 0){
+		int c = gps.read();
+		if(c < 0) break;
+		//Serial.write((char)c);
+		//Serial.write(' ');
+		gps.parse8((char)c);
 	}
 
+
+/*
+	char test[] = "$GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56\n";
+	for(size_t i=0;i<sizeof(test);i++){
+		gps.parse8(test[i]);
+	}
+	while(true);
+*/
 	delay(1000 / 5);
 }

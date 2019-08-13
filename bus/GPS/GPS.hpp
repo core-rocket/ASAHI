@@ -33,7 +33,8 @@ private:
 
 public:
 	enum class NMEA : uint8_t {
-		GLL	= 0,
+		empty = 0,
+		GLL,
 		RMC,
 		VTG,
 		GGA,
@@ -219,6 +220,176 @@ loop:
 				return true;
 				break;
 			}
+		}
+
+		return false;
+	}
+
+	void parse_data(const char *buf){
+		static NMEA type = NMEA::empty;
+		if(type == NMEA::empty){
+			if(strcmp(buf, "GLL") == 0)
+				type = NMEA::GLL;
+			return;
+		}
+
+		//Serial.print("parse_data: ");
+		//Serial.println(buf);
+
+		switch(type){
+		case NMEA::GLL:
+			if(parse_gll(buf))
+				type = NMEA::empty;
+			break;
+		default:
+			Serial.println("error: unknown NMEA type");
+			break;
+		}
+	}
+
+	bool parse_gll(const char *buf){
+		// 3539.6473,N,13921.9736,E,092218.600,A,A
+		static int lat_int=0, lat_dec=0;
+		static int lng_int=0, lng_dec=0;
+		static long time_int=0;
+		static int time_dec=0;
+		static bool north=true, east=true;
+		static bool ok=false, dgps=false;
+		static uint8_t status = 0;
+
+		switch(status){
+		case 0:
+			if(buf[0] == '\0'){
+				lat_int = 0;
+				status++;
+			}else
+				lat_int = atoi(buf);
+			break;
+		case 1:
+			lat_dec = atoi(buf);
+			break;
+		case 2:
+			if(buf[0] == 'N')
+				north = true;
+			else
+				north = false;
+			break;
+		case 3:
+			if(buf[0] == '\0'){
+				lng_int = 0;
+				status++;
+			}else
+				lng_int = atoi(buf);
+			break;
+		case 4:
+			lng_dec = atoi(buf);
+			break;
+		case 5:
+			if(buf[0] == 'E')
+				east = true;
+			else
+				east = false;
+			break;
+		case 6:
+			if(buf[0] == '\0'){
+				time_int = 0;
+				status++;
+			}else{
+				if(buf[0] == '0')
+					time_int = atol(buf+1);
+				else
+					time_int = atol(buf);
+			}
+			break;
+		case 7:
+			time_dec = atoi(buf);
+			break;
+		case 8:
+			if(buf[0] == 'A')
+				ok = true;
+			else
+				ok = false;
+			break;
+		case 9:
+			if(buf[0] == 'D')
+				dgps = true;
+			else if(buf[0] == 'A')
+				dgps = false;
+			else{
+				dgps = false;
+				ok = false;
+			}
+			break;
+		}
+		status++;
+		if(status == 10){
+			Serial.println("GLL read finished");
+//			if(ok){
+				Serial.print("lat: ");
+				if(north) Serial.print("N");
+				else Serial.print("S");
+				Serial.print(lat_int);
+				Serial.print(".");
+				Serial.print(lat_dec);
+				Serial.print(", lng: ");
+				if(east) Serial.print("E");
+				else Serial.print("W");
+				Serial.print(lng_int);
+				Serial.print(".");
+				Serial.print(lng_dec);
+				Serial.print(", time: ");
+				Serial.print(time_int);
+				Serial.print(".");
+				Serial.println(time_dec);
+				return true;
+			}
+//		}
+
+		if(status >= 10)
+			status = 0;
+		return false;
+	}
+
+	bool parse8(const char c){
+		static char buf[10];
+		static uint8_t header_count = 0;
+		static uint8_t count = 0;
+
+		switch(c){
+		case '$':		// start
+			header_count = 0;
+			count = 0;
+			break;
+		case 'G':
+			if(header_count == 0)
+				header_count++;
+			else{
+				buf[count] = c;
+				count++;
+			}
+			break;
+		case 'P':
+			if(header_count == 1)
+				header_count++;
+			else{
+				buf[count] = c;
+				count++;
+			}
+			break;
+		case ',':
+		case '.':
+		case '*':
+			buf[count] = '\0';
+			count = 0;
+			parse_data(buf);
+			break;
+		case '\n':
+			return true;
+			break;
+		default:
+			buf[count] = c;
+			count++;
+			break;
 		}
 
 		return false;
