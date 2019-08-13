@@ -23,7 +23,7 @@ void loop(){
 //	}
 
 	if(gps.parse()){
-		Serial.println("success");
+//		Serial.println("success");
 	}
 
 	delay(1000 / 5);

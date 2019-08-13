@@ -72,27 +72,35 @@ public:
 	bool parse(){
 		// $GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56
 
-		char buf[10];
-		size_t count;
+		static char buf[10];
+		static size_t count;
 
-		int status = 0;
+		static int status = 0;
 
 		//float lat, lng, time;
-		long lat_h = 0, lat_l = 0;
-		long lng_h = 0, lng_l = 0;
-		long time_h, time_l;
+		static long lat_h = 0, lat_l = 0;
+		static long lng_h = 0, lng_l = 0;
+		static long time_h, time_l;
+
+		static bool is_valid = false;
+
+		if(status != 0)
+			goto loop;
 
 		while(read() != '$');
 
 		if(read() != 'G' || read() != 'P')
 			return false;
 
+		status = 1;
+
+loop:
 		for(;;){
 			for(count=0;;count++){
 				int c = read();
 				if(c < 0)
 					return false;
-				//Serial.write((char)c);
+				Serial.write((char)c);
 				//Serial.write(' ');
 				if(c == ',' || c == '.' || c == '*'){
 					buf[count] = '\0';
@@ -102,12 +110,12 @@ public:
 			}
 
 			switch(status){
-			case 0:
+			case 1:
 				if(strcmp(buf, "GLL") == 0){
 					status++;
 				}
 				break;
-			case 1:
+			case 2:
 				if(count != 0){
 					lat_h = atol(buf);
 					status++;
@@ -116,7 +124,7 @@ public:
 					status+=2;
 				}
 				break;
-			case 2:
+			case 3:
 				if(count != 0){
 					lat_l = atol(buf);
 				}else{
@@ -124,13 +132,13 @@ public:
 				}
 				status++;
 				break;
-			case 3:
+			case 4:
 				if(strcmp(buf, "N") == 0){
-					Serial.println("north");
+					//Serial.println("north");
 				}
 				status++;
 				break;
-			case 4:
+			case 5:
 				if(count != 0){
 					lng_h = atol(buf);
 					status++;
@@ -139,7 +147,7 @@ public:
 					status+=2;
 				}
 				break;
-			case 5:
+			case 6:
 				if(count != 0){
 					lng_l = atol(buf);
 				}else{
@@ -147,13 +155,13 @@ public:
 				}
 				status++;
 				break;
-			case 6:
+			case 7:
 				if(strcmp(buf, "E") == 0){
-					Serial.println("east");
+					//Serial.println("east");
 				}
 				status++;
 				break;
-			case 7:
+			case 8:
 				if(count != 0){
 					time_h = atol(buf);
 					status++;
@@ -162,7 +170,7 @@ public:
 					status+=2;
 				}
 				break;
-			case 8:
+			case 9:
 				if(count != 0){
 					time_l = atol(buf);
 				}else{
@@ -170,31 +178,44 @@ public:
 				}
 				status++;
 				break;
-			case 9:
+			case 10:
 				if(strcmp(buf, "A") == 0){
 					Serial.println("valid");
-				}
+					is_valid = true;
+				}else
+					is_valid = false;
 				status++;
 				break;
-			case 10:
+			case 11:
 				if(strcmp(buf, "D") == 0){
 					Serial.println("DGPS");
 				}
 				status++;
 				break;
-			case 11:
+			case 12:
+				if(!is_valid){
+					status = 0;
+					return false;
+				}
+				Serial.println("");
 				Serial.print("lat = ");
 				Serial.print(lat_h);
 				Serial.print(".");
-				Serial.println(lat_l);
-				Serial.print("lng = ");
+				Serial.print(lat_l);
+				Serial.print(", lng = ");
 				Serial.print(lng_h);
 				Serial.print(".");
-				Serial.println(lng_l);
-				Serial.print("time = ");
-				Serial.print(time_h);
-				Serial.print(".");
+				Serial.print(lng_l);
+				Serial.print(", time = ");
+				Serial.print(time_h / 10000 + 9);
+				Serial.print("h");
+				Serial.print((time_h / 100) % 100);
+				Serial.print("m");
+				Serial.print(time_h % 100);
+				Serial.print("s.");
 				Serial.println(time_l);
+
+				status = 0;
 				return true;
 				break;
 			}
