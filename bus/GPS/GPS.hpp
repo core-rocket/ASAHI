@@ -51,6 +51,11 @@ public:
 		serial->begin(brate);
 	}
 
+	void hot_start(){		send_cmd("101"); }
+	void warm_start(){		send_cmd("102"); }
+	void cold_start(){		send_cmd("103"); }
+	void full_cold_start(){	send_cmd("104"); }
+
 	inline auto read() const -> int {
 		#ifdef GPS_USE_SOFTWARE_SERIAL
 			serial->listen();
