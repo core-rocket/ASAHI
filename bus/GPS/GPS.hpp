@@ -83,7 +83,7 @@ public:
 		serial->begin(brate);
 	}
 
-	void set_output(NMEA nmea, const uint8_t freq=1, const bool send_flag=true){
+	void set_output(int nmea, const uint8_t freq=1, const bool send_flag=true){
 		if(send_flag){
 			char buf[3 + 2*17 + 1];
 			buf[0] = '3';
@@ -115,33 +115,55 @@ public:
 
 	void parse_data(const char *buf){
 		static NMEA type;
+
+		#define CHECK_TYPE(t) if(strcmp(buf, #t) == 0){type=t;return;}
+
 		if(read_num == 0){
-			if(strcmp(buf, "GLL") == 0)
-				type = NMEA::GLL;
+			if(strcmp(buf, "GLL") == 0){
+				type = GLL;
+				return;
+			}
+			CHECK_TYPE(RMC);
+			CHECK_TYPE(VTG);
+			CHECK_TYPE(GGA);
+			CHECK_TYPE(GSA);
+			CHECK_TYPE(GSV);
+			CHECK_TYPE(GRS);
+			CHECK_TYPE(GST);
+			CHECK_TYPE(MALM);
+			CHECK_TYPE(MEPH);
+			CHECK_TYPE(MDGP);
+			CHECK_TYPE(MDBG);
 			return;
 		}
+		#undef CHECK_TYPE
 
 		//Serial.print("parse_data: ");
 		//Serial.println(buf);
 
-		switch(type){
-		case NMEA::GLL:
-			if(parse_gll(buf))
-				read_num = 0;
+		#define CASE(t) \
+		case t: \
+			if(parse_ ## t (buf)) \
+				{read_num = 0;} \
 			break;
+
+		switch(type){
+		CASE(GLL);
+		CASE(GGA);
 		default:
-			//Serial.println("error: unknown NMEA type");
+			Serial.println("error: unknown NMEA type");
 			break;
 		}
+
+		#undef CASE
 	}
 
-	bool parse_gll(const char *buf){
+	bool parse_GLL(const char *buf){
 		// 3539.6473,N,13921.9736,E,092218.600,A,A
 		static bool ok=false, dgps=false;
 
 		auto& lat = data.latitude;
 		auto& lng = data.longitude;
-		auto& time= data.time;
 
 		switch(read_num){
 		case 1:
@@ -191,28 +213,10 @@ public:
 				east = false;
 			break;
 		case 7:
-			if(buf[0] == '\0'){
-				time.int_part = time.dec_part = 0;
-				read_num++;
-			}else{
-				long tmp;
-				if(buf[0] == '0')
-					tmp = atol(buf+1);
-				else
-					tmp = atol(buf);
-
-				unsigned long t2 = tmp;
-
-				if(tmp < 0 || t2 > static_cast<unsigned long>(UINT32_MAX)) time.int_part = 0;
-				else time.int_part = static_cast<uint32_t>(t2);
-			}
+			read_time_int(buf);
 			break;
 		case 8:
-			{
-				int tmp = atoi(buf);
-				if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX)) time.dec_part = 0;
-				else time.dec_part = static_cast<uint16_t>(tmp);
-			}
+			read_time_dec(buf);
 			break;
 		case 9:
 			data.valid = (buf[0] == 'A');
@@ -236,6 +240,40 @@ public:
 		}
 
 		return false;
+	}
+
+	bool parse_GGA(const char *buf){
+		switch(read_num){
+			case 1:
+				break;
+		}
+		return false;
+	}
+
+	inline void read_time_int(const char *buf){
+		if(buf[0] == '\0'){
+			data.time.int_part = data.time.dec_part = 0;
+			read_num++;
+			return;
+		}
+		long tmp;
+		if(buf[0] == '0')
+			tmp = atol(buf+1);
+		else
+			tmp = atol(buf);
+
+		unsigned long t2 = tmp;
+
+		if(tmp < 0 || t2 > static_cast<unsigned long>(UINT32_MAX)) data.time.int_part = 0;
+		else data.time.int_part = static_cast<uint32_t>(t2);
+	}
+
+	inline void read_time_dec(const char *buf){
+		int tmp = atoi(buf);
+		if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX))
+			data.time.dec_part = 0;
+		else
+			data.time.dec_part = static_cast<uint16_t>(tmp);
 	}
 
 	bool parse8(const char c){
