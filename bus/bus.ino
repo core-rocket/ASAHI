@@ -44,6 +44,10 @@ namespace global {
 namespace sensor_data {
 	volatile queue<MPU6050::data_t, 10> motion;
 	volatile queue<unsigned long, 10> motion_time;
+
+	bool gps_sended;
+	uint32_t gps_time;
+	GPS::data_t gps;
 }
 
 // 関数
@@ -98,14 +102,16 @@ void loop(){
 //	Serial.print(" ");
 //	Serial.println(global::loop_time);
 
-	if(gps.available() != 0){
-//		Serial.print("GPS: ");
-		for(size_t i=0;i<gps.available();i++){
-			const int c = gps.read();
-			if(c >= 0)
-				Serial.write((char)c);
-		}
-//		Serial.println("");
+	const uint32_t gps_time = millis();
+	if(gps.parse()){
+		sensor_data::gps_sended = false;
+		sensor_data::gps_time = gps_time;
+		Serial.print("GPS: ");
+		if(!gps.data.valid)
+			Serial.print("invalid: ");
+		Serial.print("UTC: ");
+		Serial.print(gps.data.time.int_part);
+		Serial.println("");
 	}
 
 	// 受信
@@ -143,6 +149,27 @@ void loop(){
 
 void send_telemetry(){
 	using namespace sensor_data;
+
+	if(!gps_sended){
+		// GPSデータ送信処理
+		const auto& data = sensor_data::gps;
+		GPS_time	t;
+		GPS_pos		p;
+
+		t.time = p.time = gps_time;
+
+		t.time_int	= data.time.int_part;
+		t.time_dec	= data.time.dec_part;
+		twelite.send_simple(id_station, 0x09, t);
+
+		p.lat_int	= data.latitude.int_part;
+		p.lat_dec	= data.latitude.dec_part;
+		p.lng_int	= data.longitude.int_part;
+		p.lng_dec	= data.longitude.dec_part;
+		twelite.send_simple(id_station, 0x0a, p);
+
+		gps_sended = true;
+	}
 
 //	Serial.println(motion.size());
 

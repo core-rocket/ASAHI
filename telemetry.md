@@ -61,16 +61,19 @@
 - コマンド種別は0x80未満なことに注意
 - 最初にuint32_tがついている場合はタイムスタンプ付き
 
-|コマンド種別|バイト数|データ種類|
-|-|-|-|
-|0x00|char * N|困った時の文字列|
-|0x01|uint32_t + uint16_t * 3|3軸加速度|
-|0x02|uint32_t + uint16_t * 3|3軸角速度|
-|0x03|uint32_t + uint16_t|水密部温度|
-|0x04|uint32_t + float(4)|気温|
-|0x05|uint32_t + float(4)|気圧|
-|0x06|uint32_t + float(4)|高度|
-|0x07|?|GPSのなんか|
-|0x7f|?|reserved|
+|コマンド種別|バイト数|データ構造|データ種類|
+|-|-|-|-|
+|0x00| N|char * N|困った時の文字列|
+|0x01|10|uint32_t + uint16_t * 3|3軸加速度|
+|0x02|10|uint32_t + uint16_t * 3|3軸角速度|
+|0x03| 6|uint32_t + uint16_t|水密部温度|
+|0x04| 8|uint32_t + float(4)|気温|
+|0x05| 8|uint32_t + float(4)|気圧|
+|0x06| 8|uint32_t + float(4)|高度|
+|0x07| 5|uint32_t + uint8_t|GPSフラグ|
+|0x08|12|uint32_t + uint32_t + uint32_t|GPS高度(海抜高度, ジオイド高度)|
+|0x09|10|uint32_t + (uint32_t + uint16_t)|GPS測位時刻(UTC)|
+|0x0a|16|uint32_t + (uint32_t + uint16_t) * 2|GPS緯度経度|
+|0x7f|?|?|reserved|
 
 TODO: タイムスタンプつけるべきでは...

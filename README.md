@@ -23,8 +23,8 @@
 |TWE-Lite: 構造体の送受信|Done|
 |TWE-Lite: 通信品質の取得|Done|
 |GPS: ボードレート変更|Done|
-|GPS: 出力パラメータ変更|Pending|
-|GPS: 出力データのパース|Pending|
+|GPS: 出力パラメータ変更|Done|
+|GPS: 出力データのパース|WIP|
 |SD: ファイル書き込み|Done|
 |SD: ファイル書き込み速度計測|Done|
 |フライトピン: 動作確認|Done|
