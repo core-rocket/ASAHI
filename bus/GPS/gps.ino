@@ -11,7 +11,10 @@ void setup(){
 
 	gps.init();
 	gps.set_interval(1000 / 5);
-	gps.send_cmd("314,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
+	delay(1000);
+
+//	gps.send_cmd("314,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
+	gps.set_output(/*GPS::GLL |*/ GPS::GGA);
 
 	delay(1000);
 }
@@ -39,7 +42,8 @@ void loop(){
 		print_data(gps.data);
 	}
 
-	char test[] = "$GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56\r\n";
+	char test[] = "$GPGGA,073132.0,3421.7686,N,13222.3345,E,2,05,2.5,2.9,M,29.7,M,0,689*4D\r\n";
+		//"$GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56\r\n";
 	for(size_t i=0;i<sizeof(test);i++){
 //		if(gps.parse8(test[i]))
 //			print_data(gps.data);
