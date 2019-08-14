@@ -34,9 +34,16 @@ private:
 	uint8_t read_num = 0;
 
 public:
+	bool north, east;
 	struct float_t {
-		uint16_t int_part, dec_part;
-	} latitude, longitude, time;
+		uint32_t int_part;
+		uint16_t dec_part;
+	};
+
+	struct data_t {
+		float_t time;
+		float_t latitude, longitude;
+	} data;
 
 	enum class NMEA : uint8_t {
 		empty = 0,
@@ -105,25 +112,28 @@ public:
 
 	bool parse_gll(const char *buf){
 		// 3539.6473,N,13921.9736,E,092218.600,A,A
-		static bool north=true, east=true;
 		static bool ok=false, dgps=false;
+
+		auto& lat = data.latitude;
+		auto& lng = data.longitude;
+		auto& time= data.time;
 
 		switch(read_num){
 		case 1:
 			if(buf[0] == '\0'){
-				latitude.int_part = latitude.dec_part = 0;
+				lat.int_part = lat.dec_part = 0;
 				read_num++;
 			}else{
 				int tmp = atoi(buf);
-				if(tmp < 0) latitude.int_part = 0;
-				else latitude.int_part = static_cast<uint16_t>(tmp);
+				if(tmp < 0) lat.int_part = 0;
+				else lat.int_part = static_cast<uint32_t>(tmp);
 			}
 			break;
 		case 2:
 			{
 				int tmp = atoi(buf);
-				if(tmp < 0) latitude.dec_part = 0;
-				else latitude.dec_part = static_cast<uint16_t>(tmp);
+				if(tmp < 0) lat.dec_part = 0;
+				else lat.dec_part = static_cast<uint16_t>(tmp);
 			}
 			break;
 		case 3:
@@ -134,19 +144,19 @@ public:
 			break;
 		case 4:
 			if(buf[0] == '\0'){
-				longitude.int_part = longitude.dec_part = 0;
+				lng.int_part = lng.dec_part = 0;
 				read_num++;
 			}else{
 				int tmp = atoi(buf);
-				if(tmp < 0) longitude.int_part = 0;
-				else longitude.int_part = static_cast<uint16_t>(tmp);
+				if(tmp < 0) lng.int_part = 0;
+				else lng.int_part = static_cast<uint32_t>(tmp);
 			}
 			break;
 		case 5:
 			{
 				int tmp = atoi(buf);
-				if(tmp < 0) longitude.dec_part = 0;
-				else longitude.dec_part = static_cast<uint16_t>(tmp);
+				if(tmp < 0) lng.dec_part = 0;
+				else lng.dec_part = static_cast<uint16_t>(tmp);
 			}
 			break;
 		case 6:
@@ -160,13 +170,13 @@ public:
 				time.int_part = time.dec_part = 0;
 				read_num++;
 			}else{
-				int tmp;
+				long tmp;
 				if(buf[0] == '0')
 					tmp = atol(buf+1);
 				else
 					tmp = atol(buf);
 				if(tmp < 0) time.int_part = 0;
-				else time.int_part = static_cast<uint16_t>(tmp);
+				else time.int_part = static_cast<uint32_t>(tmp);
 			}
 			break;
 		case 8:
@@ -195,6 +205,7 @@ public:
 		}
 		if(read_num >= 10){
 			if(ok){
+				/*
 				Serial.print("lat: ");
 				if(north) Serial.print("N");
 				else Serial.print("S");
@@ -211,6 +222,7 @@ public:
 				Serial.print(time.int_part);
 				Serial.print(".");
 				Serial.println(time.dec_part);
+				*/
 				read_num = 0;
 				return true;
 			}
