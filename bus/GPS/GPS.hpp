@@ -45,6 +45,8 @@ public:
 		bool dgps;
 		float_t time;
 		float_t latitude, longitude;
+		bool is_meter, is_meter_geo;
+		float_t altitude, altitude_geo;
 	} data;
 
 	enum NMEA {
@@ -169,9 +171,6 @@ public:
 		// 3539.6473,N,13921.9736,E,092218.600,A,A
 		static bool ok=false, dgps=false;
 
-		auto& lat = data.latitude;
-		auto& lng = data.longitude;
-
 		//Serial.print("read_num = ");
 		//Serial.println(read_num);
 		switch(read_num){
@@ -232,44 +231,46 @@ public:
 				east = (buf[0] == 'E');
 				break;
 			case 6:
-				Serial.print("flag: ");
-				Serial.println(buf);
 				data.valid = (buf[0] != '0');
 				data.dgps  = (buf[0] == '2');
 				break;
 			case 7:
-				Serial.print("sat num: ");
-				Serial.println(buf);
+				//Serial.print("sat num: ");
+				//Serial.println(buf);
 				break;
 			case 8:
 				// DOP
-				Serial.print("DOP: ");
-				Serial.println(buf);
+				//Serial.print("DOP: ");
+				//Serial.println(buf);
 				break;
 			case 9:
-				Serial.print("altitude: ");
-				Serial.println(buf);
+				//Serial.print("altitude: ");
+				//Serial.println(buf);
+				read_float(buf, data.altitude);
 				break;
 			case 10:
 				// unit
-				Serial.print("unit: ");
-				Serial.println(buf);
+				//Serial.print("unit: ");
+				//Serial.println(buf);
+				data.is_meter = (buf[0] == 'M');
 				break;
 			case 11:
-				Serial.print("altitude2: ");
-				Serial.println(buf);
+				//Serial.print("altitude2: ");
+				//Serial.println(buf);
+				read_float(buf, data.altitude_geo);
 				break;
 			case 12:
-				Serial.print("unit2: ");
-				Serial.println(buf);
+				//Serial.print("unit2: ");
+				//Serial.println(buf);
+				data.is_meter = (buf[0] == 'M');
 				break;
 			case 13:
-				Serial.print("DGPS_time: ");
-				Serial.println(buf);
+				//Serial.print("DGPS_time: ");
+				//Serial.println(buf);
 				break;
 			case 14:
-				Serial.print("DGPS id: ");
-				Serial.println(buf);
+				//Serial.print("DGPS id: ");
+				//Serial.println(buf);
 				break;
 		}
 
