@@ -11,6 +11,8 @@ void setup(){
 
 	gps.init();
 	gps.set_interval(1000 / 5);
+	delay(1000);
+
 //	gps.send_cmd("314,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
 	gps.set_output(GPS::GLL | GPS::GGA);
 
