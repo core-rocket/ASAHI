@@ -42,6 +42,7 @@ public:
 
 	struct data_t {
 		bool valid;
+		bool dgps;
 		float_t time;
 		float_t latitude, longitude;
 	} data;
@@ -138,8 +139,14 @@ public:
 		}
 		#undef CHECK_TYPE
 
-		//Serial.print("parse_data: ");
+		//Serial.print("parse_data(");
+		//Serial.print(read_num);
+		//Serial.print("): ");
 		//Serial.println(buf);
+
+		if(buf[0] == '\0'){
+			return;
+		}
 
 		#define CASE(t) \
 		case t: \
@@ -149,7 +156,7 @@ public:
 
 		switch(type){
 		CASE(GLL);
-//		CASE(GGA);
+		CASE(GGA);
 		default:
 			//Serial.println("error: unknown NMEA type");
 			break;
@@ -169,54 +176,24 @@ public:
 		//Serial.println(read_num);
 		switch(read_num){
 		case 1:
-			read_int(buf, lat);
-			break;
-			if(buf[0] == '\0'){
-				lat.int_part = lat.dec_part = 0;
-				read_num++;
-			}else{
-				int32_t tmp = atoi(buf);
-				Serial.print("tmp=");
-				Serial.println(tmp);
-				if(tmp < 0 || tmp > static_cast<int32_t>(UINT32_MAX)) lat.int_part = 0;
-				else lat.int_part = static_cast<uint32_t>(tmp);
-			}
+			read_float(buf, data.latitude);
 			break;
 		case 2:
-			read_dec(buf, data.latitude);
+			north = (buf[0] == 'N');
 			break;
 		case 3:
-			if(buf[0] == 'N')
-				north = true;
-			else
-				north = false;
+			read_float(buf, data.longitude);
 			break;
 		case 4:
-			if(buf[0] == '\0'){
-				lng.int_part = lng.dec_part = 0;
-				read_num++;
-			}else{
-				int tmp = atoi(buf);
-				if(tmp < 0) lng.int_part = 0;
-				else lng.int_part = static_cast<uint32_t>(tmp);
-			}
-			break;
-		case 5:
-			read_dec(buf, data.longitude);
-			break;
-		case 6:
 			east = (buf[0] == 'E');
 			break;
-		case 7:
-			read_time_int(buf);
+		case 5:
+			read_float(buf, data.time);
 			break;
-		case 8:
-			read_dec(buf, data.time);
-			break;
-		case 9:
+		case 6:
 			data.valid = (buf[0] == 'A');
 			break;
-		case 10:
+		case 7:
 			if(buf[0] == 'D')
 				dgps = true;
 			else if(buf[0] == 'A')
@@ -227,7 +204,7 @@ public:
 			}
 			break;
 		}
-		if(read_num >= 10){
+		if(read_num >= 7){
 			if(ok){
 				read_num = 0;
 				return true;
@@ -240,21 +217,95 @@ public:
 	bool parse_GGA(const char *buf){
 		switch(read_num){
 			case 1:
-				read_time_int(buf);
+				read_float(buf, data.time);
 				break;
 			case 2:
-				read_dec(buf, data.time);
+				read_float(buf, data.latitude);
+				break;
+			case 3:
+				north = (buf[0] == 'N');
+				break;
+			case 4:
+				read_float(buf, data.longitude);
+				break;
+			case 5:
+				east = (buf[0] == 'E');
+				break;
+			case 6:
+				Serial.print("flag: ");
+				Serial.println(buf);
+				data.valid = (buf[0] != '0');
+				data.dgps  = (buf[0] == '2');
+				break;
+			case 7:
+				Serial.print("sat num: ");
+				Serial.println(buf);
+				break;
+			case 8:
+				// DOP
+				Serial.print("DOP: ");
+				Serial.println(buf);
+				break;
+			case 9:
+				Serial.print("altitude: ");
+				Serial.println(buf);
+				break;
+			case 10:
+				// unit
+				Serial.print("unit: ");
+				Serial.println(buf);
+				break;
+			case 11:
+				Serial.print("altitude2: ");
+				Serial.println(buf);
+				break;
+			case 12:
+				Serial.print("unit2: ");
+				Serial.println(buf);
+				break;
+			case 13:
+				Serial.print("DGPS_time: ");
+				Serial.println(buf);
+				break;
+			case 14:
+				Serial.print("DGPS id: ");
+				Serial.println(buf);
 				break;
 		}
+
+		if(read_num >= 14){
+			read_num = 0;
+		}
+
 		return false;
 	}
 
-	inline void read_time_int(const char *buf){
-		if(buf[0] == '\0'){
-			data.time.int_part = data.time.dec_part = 0;
-			read_num++;
-			return;
+	void read_float(const char *buf, float_t &f){
+		unsigned long tmp;
+		size_t start = 0;
+		size_t end = 0;
+		if(buf[0] == '0' && buf[1] != '.')
+			start++;
+		for(end=start;;end++){
+			if(*(buf+end) == '.') break;
+			if(*(buf+end) == '\0') return;
 		}
+		end--;
+		const char *endp = (buf+end);
+		tmp = strtoul(buf+start, const_cast<char**>(&endp), 10);
+		if(tmp > static_cast<unsigned long>(UINT32_MAX))
+			f.int_part = 0;
+		else
+			f.int_part = static_cast<uint32_t>(tmp);
+		end += 2;
+		tmp = strtoul(buf+end, nullptr, 10);
+		if(tmp > static_cast<unsigned long>(UINT16_MAX))
+			f.dec_part = 0;
+		else
+			f.dec_part = static_cast<uint16_t>(tmp);
+	}
+
+	inline void read_time_int(const char *buf){
 		unsigned long tmp;
 		if(buf[0] == '0')
 			tmp = strtoul(buf+1, nullptr, 10);
@@ -266,12 +317,6 @@ public:
 	}
 
 	inline void read_int(const char *buf, float_t &f){
-		if(buf[0] == '\0'){
-			f.int_part = 0;
-			f.dec_part = 0;
-			read_num++;
-			return;
-		}
 		int tmp = atoi(buf);
 		if(tmp < 0) f.int_part = 0;
 		else f.int_part = static_cast<uint32_t>(tmp);
@@ -286,7 +331,7 @@ public:
 	}
 
 	bool parse8(const char c){
-		static char buf[10];
+		static char buf[15];
 		static uint8_t header_count = 0;
 		static uint8_t count = 0;
 
@@ -313,7 +358,6 @@ public:
 			}
 			break;
 		case ',':
-		case '.':
 		case '*':
 			buf[count] = '\0';
 			count = 0;
