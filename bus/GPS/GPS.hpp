@@ -306,31 +306,6 @@ public:
 			f.dec_part = static_cast<uint16_t>(tmp);
 	}
 
-	inline void read_time_int(const char *buf){
-		unsigned long tmp;
-		if(buf[0] == '0')
-			tmp = strtoul(buf+1, nullptr, 10);
-		else
-			tmp = strtoul(buf, nullptr, 10);
-
-		if(tmp > static_cast<unsigned long>(UINT32_MAX)) data.time.int_part = 0;
-		else data.time.int_part = static_cast<uint32_t>(tmp);
-	}
-
-	inline void read_int(const char *buf, float_t &f){
-		int tmp = atoi(buf);
-		if(tmp < 0) f.int_part = 0;
-		else f.int_part = static_cast<uint32_t>(tmp);
-	}
-
-	inline void read_dec(const char *buf, float_t &f){
-		int tmp = atoi(buf);
-		if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX))
-			f.dec_part = 0;
-		else
-			f.dec_part = static_cast<uint16_t>(tmp);
-	}
-
 	bool parse8(const char c){
 		static char buf[15];
 		static uint8_t header_count = 0;
