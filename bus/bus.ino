@@ -13,6 +13,9 @@
 #define INIT_SAMPLING_RATE	10
 #define SAMPLING_RATE		100
 
+#define GPS_OUTPUT_RATE		5
+#define GPS_OUTPUT_INTERVAL	(1000 / GPS_OUTPUT_RATE)
+
 // センサ
 GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
 MPU6050 mpu;
@@ -65,7 +68,9 @@ void send_log(const char *str){
 void setup(){
 	// GPS初期化
 	gps.init();		// baud変更があるので初めに初期化
-	delay(1000);	// 念の為少し待つ
+	delay(1000);		// 念の為少し待つ
+	gps.set_interval(GPS_OUTPUT_INTERVAL);
+	gps.set_output(GPS::GGA);
 
 	// 無線機初期化
 	twelite.init();
@@ -106,12 +111,22 @@ void loop(){
 	if(gps.parse()){
 		sensor_data::gps_sended = false;
 		sensor_data::gps_time = gps_time;
+		auto &d = gps.data;
 		Serial.print("GPS: ");
-		if(!gps.data.valid)
+		if(!d.valid)
 			Serial.print("invalid: ");
 		Serial.print("UTC: ");
-		Serial.print(gps.data.time.int_part);
-		Serial.println("");
+		Serial.print(d.time.int_part);
+		Serial.print(".");
+		Serial.print(d.time.dec_part);
+		Serial.print(" lat=");
+		Serial.print(d.latitude.int_part);
+		Serial.print(".");
+		Serial.print(d.latitude.dec_part);
+		Serial.print(", lng=");
+		Serial.print(d.longitude.int_part);
+		Serial.print(".");
+		Serial.println(d.longitude.dec_part);
 	}
 
 	// 受信
