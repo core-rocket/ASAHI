@@ -106,7 +106,7 @@ public:
 	}
 
 	bool parse(){
-		while(true){
+		while(available()){
 			int c = read();
 			if(c<0) break;
 			//Serial.print((char)c);
