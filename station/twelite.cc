@@ -105,6 +105,33 @@ void get_gyro(const TWE_Lite *twe){
 	twelite::gyro.push(twelite::latest_gyro);
 }
 
+void get_gps(const TWE_Lite *twe){
+	switch(twe->cmd_type()){
+		case 0x09:
+			{
+				auto *t = twe->get_data<GPS_time>();
+				if(t == nullptr)
+					return;
+				std::cout << "GPS time: " << t->time_int << "." << t->time_dec << std::endl;
+			}
+			break;
+		case 0x0a:
+			{
+				auto *p = twe->get_data<GPS_pos>();
+				if(p == nullptr)
+					return;
+				std::cout << "GPS pos: "
+					<< "lat = " << p->lat_int << "." << p->lat_dec
+					<< ", lng = " << p->lng_int << "." << p->lng_dec
+					<< std::endl;
+			}
+			break;
+		default:
+			std::cout << "unknown GPS data type" << std::endl;
+			break;
+	}
+}
+
 // 簡易形式で受信したデータをパースする
 void parse_simple(const TWE_Lite *twe){
 	switch(twe->cmd_type()){
@@ -116,6 +143,12 @@ void parse_simple(const TWE_Lite *twe){
 			break;
 		case 0x02:	// 3軸ジャイロ
 			get_gyro(twe);
+			break;
+		case 0x07:
+		case 0x08:
+		case 0x09:
+		case 0x0a:
+			get_gps(twe);
 			break;
 		default:
 			std::cout
