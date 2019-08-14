@@ -48,14 +48,14 @@ void loop(){
 		if(c < 0) break;
 		//Serial.write((char)c);
 		//Serial.write(' ');
-		gps.parse8((char)c);
+		if(gps.parse8((char)c))
+			print_data(gps.data);
 	}
 
-
-	char test[] = "$GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56\r\n";
+	char test[] = "$GPGLL,3539.6473,N,13921.9736,E,232218.600,A,A*56\r\n";
 	for(size_t i=0;i<sizeof(test);i++){
 		if(gps.parse8(test[i])){
-			print_data(gps.data);
+//			print_data(gps.data);
 		}
 	}
 

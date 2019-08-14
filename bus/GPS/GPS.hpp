@@ -132,7 +132,7 @@ public:
 		case 2:
 			{
 				int tmp = atoi(buf);
-				if(tmp < 0) lat.dec_part = 0;
+				if(tmp < 0 || tmp > static_cast<int>(UINT16_MAX)) lat.dec_part = 0;
 				else lat.dec_part = static_cast<uint16_t>(tmp);
 			}
 			break;
@@ -155,7 +155,7 @@ public:
 		case 5:
 			{
 				int tmp = atoi(buf);
-				if(tmp < 0) lng.dec_part = 0;
+				if(tmp < 0 || tmp > static_cast<int>(UINT16_MAX)) lng.dec_part = 0;
 				else lng.dec_part = static_cast<uint16_t>(tmp);
 			}
 			break;
@@ -175,14 +175,17 @@ public:
 					tmp = atol(buf+1);
 				else
 					tmp = atol(buf);
-				if(tmp < 0) time.int_part = 0;
-				else time.int_part = static_cast<uint32_t>(tmp);
+
+				unsigned long t2 = tmp;
+
+				if(tmp < 0 || t2 > static_cast<unsigned long>(UINT32_MAX)) time.int_part = 0;
+				else time.int_part = static_cast<uint32_t>(t2);
 			}
 			break;
 		case 8:
 			{
 				int tmp = atoi(buf);
-				if(tmp < 0) time.dec_part = 0;
+				if(tmp < 0 || tmp > static_cast<int>(UINT16_MAX)) time.dec_part = 0;
 				else time.dec_part = static_cast<uint16_t>(tmp);
 			}
 			break;
