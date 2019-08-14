@@ -25,9 +25,9 @@ void print_float(const GPS::float_t &f){
 void print_data(const GPS::data_t &d){
 	Serial.print("UTC: ");
 	print_float(d.time);
-	Serial.print(" lat = ");
+	Serial.print("\tlat = ");
 	print_float(d.latitude);
-	Serial.print(" lng = ");
+	Serial.print("\tlng = ");
 	print_float(d.longitude);
 	Serial.println("");
 }
@@ -52,11 +52,10 @@ void loop(){
 			print_data(gps.data);
 	}
 
-	char test[] = "$GPGLL,3539.6473,N,13921.9736,E,232218.600,A,A*56\r\n";
+	char test[] = "$GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56\r\n";
 	for(size_t i=0;i<sizeof(test);i++){
-		if(gps.parse8(test[i])){
+//		if(gps.parse8(test[i]))
 //			print_data(gps.data);
-		}
 	}
 
 //	while(true);

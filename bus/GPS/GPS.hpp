@@ -105,7 +105,7 @@ public:
 				type = NMEA::empty;
 			break;
 		default:
-			Serial.println("error: unknown NMEA type");
+			//Serial.println("error: unknown NMEA type");
 			break;
 		}
 	}
@@ -132,7 +132,7 @@ public:
 		case 2:
 			{
 				int tmp = atoi(buf);
-				if(tmp < 0 || tmp > static_cast<int>(UINT16_MAX)) lat.dec_part = 0;
+				if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX)) lat.dec_part = 0;
 				else lat.dec_part = static_cast<uint16_t>(tmp);
 			}
 			break;
@@ -155,7 +155,7 @@ public:
 		case 5:
 			{
 				int tmp = atoi(buf);
-				if(tmp < 0 || tmp > static_cast<int>(UINT16_MAX)) lng.dec_part = 0;
+				if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX)) lng.dec_part = 0;
 				else lng.dec_part = static_cast<uint16_t>(tmp);
 			}
 			break;
@@ -185,7 +185,7 @@ public:
 		case 8:
 			{
 				int tmp = atoi(buf);
-				if(tmp < 0 || tmp > static_cast<int>(UINT16_MAX)) time.dec_part = 0;
+				if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX)) time.dec_part = 0;
 				else time.dec_part = static_cast<uint16_t>(tmp);
 			}
 			break;
@@ -208,24 +208,6 @@ public:
 		}
 		if(read_num >= 10){
 			if(ok){
-				/*
-				Serial.print("lat: ");
-				if(north) Serial.print("N");
-				else Serial.print("S");
-				Serial.print(latitude.int_part);
-				Serial.print(".");
-				Serial.print(latitude.dec_part);
-				Serial.print(", lng: ");
-				if(east) Serial.print("E");
-				else Serial.print("W");
-				Serial.print(longitude.int_part);
-				Serial.print(".");
-				Serial.print(longitude.dec_part);
-				Serial.print(", time: ");
-				Serial.print(time.int_part);
-				Serial.print(".");
-				Serial.println(time.dec_part);
-				*/
 				read_num = 0;
 				return true;
 			}
