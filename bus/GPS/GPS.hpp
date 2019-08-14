@@ -41,6 +41,7 @@ public:
 	};
 
 	struct data_t {
+		bool valid;
 		float_t time;
 		float_t latitude, longitude;
 	} data;
@@ -84,7 +85,12 @@ public:
 	}
 
 	bool parse(){
-		// $GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56
+		while(true){
+			int c = read();
+			if(c<0) break;
+			if(parse8(static_cast<char>(c)))
+				return true;
+		}
 		return false;
 	}
 
@@ -190,10 +196,7 @@ public:
 			}
 			break;
 		case 9:
-			if(buf[0] == 'A')
-				ok = true;
-			else
-				ok = false;
+			data.valid = (buf[0] == 'A');
 			break;
 		case 10:
 			if(buf[0] == 'D')
@@ -202,7 +205,7 @@ public:
 				dgps = false;
 			else{
 				dgps = false;
-				ok = false;
+				data.valid = false;
 			}
 			break;
 		}
