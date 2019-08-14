@@ -29,7 +29,7 @@ private:
 
 	const size_t brate;
 
-	uint8_t nmea_setting[17];
+	uint64_t nmea_setting = 0;
 
 	uint8_t read_num = 0;
 
@@ -46,20 +46,19 @@ public:
 		float_t latitude, longitude;
 	} data;
 
-	enum class NMEA : uint8_t {
-		empty = 0,
-		GLL,
-		RMC,
-		VTG,
-		GGA,
-		GSA,
-		GSV,
-		GRS,
-		GST,
-		MALM,
-		MEPH,
-		MDGP,
-		MDBG,
+	enum NMEA {
+		GLL = 0b000000000001,
+		RMC = 0b000000000010,
+		VTG = 0b000000000100,
+		GGA = 0b000000001000,
+		GSA = 0b000000010000,
+		GSV = 0b000000100000,
+		GRS = 0b000001000000,
+		GST = 0b000010000000,
+		MALM= 0b000100000000,
+		MEPH= 0b001000000000,
+		MDGP= 0b010000000000,
+		MDBG= 0b100000000000,
 	};
 
 	// 初期化
@@ -84,10 +83,30 @@ public:
 		serial->begin(brate);
 	}
 
+	void set_output(NMEA nmea, const uint8_t freq=1, const bool send_flag=true){
+		if(send_flag){
+			char buf[3 + 2*17 + 1];
+			buf[0] = '3';
+			buf[1] = '1';
+			buf[2] = '4';
+			for(size_t i=0;i<17;i++){
+				buf[3+i*2] = ',';
+				if(nmea & (1 << i))
+					buf[3+i*2+1] = '0' + freq;
+				else
+					buf[3+i*2+1] = '0';
+			}
+			buf[3+2*17] = '\0';
+			Serial.println(buf);
+			send_cmd(buf);
+		}
+	}
+
 	bool parse(){
 		while(true){
 			int c = read();
 			if(c<0) break;
+			//Serial.print((char)c);
 			if(parse8(static_cast<char>(c)))
 				return true;
 		}
@@ -108,7 +127,7 @@ public:
 		switch(type){
 		case NMEA::GLL:
 			if(parse_gll(buf))
-				type = NMEA::empty;
+				read_num = 0;
 			break;
 		default:
 			//Serial.println("error: unknown NMEA type");
