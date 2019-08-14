@@ -36,12 +36,11 @@ void loop(){
 	}
 
 
-/*
-	char test[] = "$GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56\n";
+	char test[] = "$GPGLL,3539.6473,N,13921.9736,E,092218.600,A,A*56\r\n";
 	for(size_t i=0;i<sizeof(test);i++){
 		gps.parse8(test[i]);
 	}
-	while(true);
-*/
+//	while(true);
+
 	delay(1000 / 5);
 }
