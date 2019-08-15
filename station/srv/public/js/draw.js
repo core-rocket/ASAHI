@@ -2,6 +2,9 @@ var request = new XMLHttpRequest();
 var acc_ctx = document.getElementById('acc-chart').getContext('2d');
 var gyro_ctx= document.getElementById('gyro-chart').getContext('2d');
 
+var last_acc_time = 0.0;
+var last_gyro_time= 0.0;
+
 function acc_onrefresh(chart){
 	request.open("GET", "/data/acc", false);
 	request.send(null);
@@ -9,20 +12,15 @@ function acc_onrefresh(chart){
 		return;
 	var data = JSON.parse(request.responseText);
 
-	const client_time = Date.now();
-	var datasets = chart.config.data.datasets;
-	datasets[0].data.push({
-		x: client_time,
-		y: data.x
-	});
-	datasets[1].data.push({
-		x: client_time,
-		y: data.y
-	});
-	datasets[2].data.push({
-		x: client_time,
-		y: data.z
-	});
+	var dataset = chart.config.data.datasets;
+	for(var i=0;i<Object.keys(data).length;i++){
+		const client_time = Date.now();
+		if(last_acc_time > data[i].time) continue;
+		last_acc_time = data[i].time;
+		dataset[0].data.push({ x: client_time, y: data[i].x });
+		dataset[1].data.push({ x: client_time, y: data[i].y });
+		dataset[2].data.push({ x: client_time, y: data[i].z });
+	}
 }
 
 function gyro_onrefresh(chart){
@@ -32,20 +30,15 @@ function gyro_onrefresh(chart){
 		return;
 	var data = JSON.parse(request.responseText);
 
-	const client_time = Date.now();
-	var datasets = chart.config.data.datasets;
-	datasets[0].data.push({
-		x: client_time,
-		y: data.x
-	});
-	datasets[1].data.push({
-		x: client_time,
-		y: data.y
-	});
-	datasets[2].data.push({
-		x: client_time,
-		y: data.z
-	});
+	var dataset = chart.config.data.datasets;
+	for(var i=0;i<Object.keys(data).length;i++){
+		const client_time = Date.now();
+		if(last_acc_time > data[i].time) continue;
+		last_gyro_time = data[i].time;
+		dataset[0].data.push({ x: client_time, y: data[i].x });
+		dataset[1].data.push({ x: client_time, y: data[i].y });
+		dataset[2].data.push({ x: client_time, y: data[i].z });
+	}
 }
 
 var acc_chart = new Chart(acc_ctx, {
