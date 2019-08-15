@@ -8,17 +8,18 @@ function acc_onrefresh(chart){
 		return;
 	var data = JSON.parse(request.responseText);
 
+	const client_time = Date.now();
 	var datasets = chart.config.data.datasets;
 	datasets[0].data.push({
-		x: Date.now(),
+		x: client_time,
 		y: data.x
 	});
 	datasets[1].data.push({
-		x: Date.now(),
+		x: client_time,
 		y: data.y
 	});
 	datasets[2].data.push({
-		x: Date.now(),
+		x: client_time,
 		y: data.z
 	});
 }
@@ -49,8 +50,8 @@ var acc_chart = new Chart(acc_ctx, {
 			xAxes: [{
 				type: 'realtime',
 				realtime: {
-					duration: 20000,
-					refresh: 100,
+					duration: 10000,
+					refresh: 10,
 					delay: 0,
 					onRefresh: acc_onrefresh
 				}

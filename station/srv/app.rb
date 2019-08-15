@@ -7,10 +7,13 @@ get '/' do
 end
 
 get '/data/acc' do
-	data = {
-		x: 0.0,
-		y: 1.0,
-		z: 2.0
+	log = `tail -n 1 ../log/acc.csv`
+	acc = log.split(",")
+	j = {
+		time: acc[0],
+		x: acc[1],
+		y: acc[2],
+		z: acc[3]
 	}
-	json data
+	json j
 end
