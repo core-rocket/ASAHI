@@ -17,3 +17,15 @@ get '/data/acc' do
 	}
 	json j
 end
+
+get '/data/gyro' do
+	log = `tail -n 1 ../log/gyro.csv`
+	gyro= log.split(",")
+	j = {
+		time: gyro[0],
+		x: gyro[1],
+		y: gyro[2],
+		z: gyro[3],
+	}
+	json j
+end
