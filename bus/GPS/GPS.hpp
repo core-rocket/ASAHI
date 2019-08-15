@@ -29,7 +29,7 @@ private:
 
 	const size_t brate;
 
-	uint8_t nmea_setting[17];
+	uint64_t nmea_setting = 0;
 
 	uint8_t read_num = 0;
 
@@ -42,24 +42,26 @@ public:
 
 	struct data_t {
 		bool valid;
+		bool dgps;
 		float_t time;
 		float_t latitude, longitude;
+		bool is_meter, is_meter_geo;
+		float_t altitude, altitude_geo;
 	} data;
 
-	enum class NMEA : uint8_t {
-		empty = 0,
-		GLL,
-		RMC,
-		VTG,
-		GGA,
-		GSA,
-		GSV,
-		GRS,
-		GST,
-		MALM,
-		MEPH,
-		MDGP,
-		MDBG,
+	enum NMEA {
+		GLL = 0b000000000001,
+		RMC = 0b000000000010,
+		VTG = 0b000000000100,
+		GGA = 0b000000001000,
+		GSA = 0b000000010000,
+		GSV = 0b000000100000,
+		GRS = 0b000001000000,
+		GST = 0b000010000000,
+		MALM= 0b000100000000,
+		MEPH= 0b001000000000,
+		MDGP= 0b010000000000,
+		MDBG= 0b100000000000,
 	};
 
 	// 初期化
@@ -84,10 +86,30 @@ public:
 		serial->begin(brate);
 	}
 
+	void set_output(int nmea, const uint8_t freq=1, const bool send_flag=true){
+		if(send_flag){
+			char buf[3 + 2*17 + 1];
+			buf[0] = '3';
+			buf[1] = '1';
+			buf[2] = '4';
+			for(size_t i=0;i<17;i++){
+				buf[3+i*2] = ',';
+				if(nmea & (1 << i))
+					buf[3+i*2+1] = '0' + freq;
+				else
+					buf[3+i*2+1] = '0';
+			}
+			buf[3+2*17] = '\0';
+			Serial.println(buf);
+			send_cmd(buf);
+		}
+	}
+
 	bool parse(){
-		while(true){
+		while(available()){
 			int c = read();
 			if(c<0) break;
+			//Serial.print((char)c);
 			if(parse8(static_cast<char>(c)))
 				return true;
 		}
@@ -96,109 +118,81 @@ public:
 
 	void parse_data(const char *buf){
 		static NMEA type;
+
+		#define CHECK_TYPE(t) if(strcmp(buf, #t) == 0){type=t;return;}
+
 		if(read_num == 0){
-			if(strcmp(buf, "GLL") == 0)
-				type = NMEA::GLL;
+			if(strcmp(buf, "GLL") == 0){
+				type = GLL;
+				return;
+			}
+			CHECK_TYPE(RMC);
+			CHECK_TYPE(VTG);
+			CHECK_TYPE(GGA);
+			CHECK_TYPE(GSA);
+			CHECK_TYPE(GSV);
+			CHECK_TYPE(GRS);
+			CHECK_TYPE(GST);
+			CHECK_TYPE(MALM);
+			CHECK_TYPE(MEPH);
+			CHECK_TYPE(MDGP);
+			CHECK_TYPE(MDBG);
+			return;
+		}
+		#undef CHECK_TYPE
+
+		//Serial.print("parse_data(");
+		//Serial.print(read_num);
+		//Serial.print("): ");
+		//Serial.println(buf);
+
+		if(buf[0] == '\0'){
 			return;
 		}
 
-		//Serial.print("parse_data: ");
-		//Serial.println(buf);
+		#define CASE(t) \
+		case t: \
+			if(parse_ ## t (buf)) \
+				{read_num = 0;} \
+			break;
 
 		switch(type){
-		case NMEA::GLL:
-			if(parse_gll(buf))
-				type = NMEA::empty;
-			break;
+		CASE(GLL);
+		CASE(GGA);
 		default:
 			//Serial.println("error: unknown NMEA type");
 			break;
 		}
+
+		#undef CASE
 	}
 
-	bool parse_gll(const char *buf){
+	bool parse_GLL(const char *buf){
 		// 3539.6473,N,13921.9736,E,092218.600,A,A
 		static bool ok=false, dgps=false;
 
-		auto& lat = data.latitude;
-		auto& lng = data.longitude;
-		auto& time= data.time;
-
+		//Serial.print("read_num = ");
+		//Serial.println(read_num);
 		switch(read_num){
 		case 1:
-			if(buf[0] == '\0'){
-				lat.int_part = lat.dec_part = 0;
-				read_num++;
-			}else{
-				int tmp = atoi(buf);
-				if(tmp < 0) lat.int_part = 0;
-				else lat.int_part = static_cast<uint32_t>(tmp);
-			}
+			read_float(buf, data.latitude);
 			break;
 		case 2:
-			{
-				int tmp = atoi(buf);
-				if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX)) lat.dec_part = 0;
-				else lat.dec_part = static_cast<uint16_t>(tmp);
-			}
+			north = (buf[0] == 'N');
 			break;
 		case 3:
-			if(buf[0] == 'N')
-				north = true;
-			else
-				north = false;
+			read_float(buf, data.longitude);
 			break;
 		case 4:
-			if(buf[0] == '\0'){
-				lng.int_part = lng.dec_part = 0;
-				read_num++;
-			}else{
-				int tmp = atoi(buf);
-				if(tmp < 0) lng.int_part = 0;
-				else lng.int_part = static_cast<uint32_t>(tmp);
-			}
+			east = (buf[0] == 'E');
 			break;
 		case 5:
-			{
-				int tmp = atoi(buf);
-				if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX)) lng.dec_part = 0;
-				else lng.dec_part = static_cast<uint16_t>(tmp);
-			}
+			read_float(buf, data.time);
 			break;
 		case 6:
-			if(buf[0] == 'E')
-				east = true;
-			else
-				east = false;
-			break;
-		case 7:
-			if(buf[0] == '\0'){
-				time.int_part = time.dec_part = 0;
-				read_num++;
-			}else{
-				long tmp;
-				if(buf[0] == '0')
-					tmp = atol(buf+1);
-				else
-					tmp = atol(buf);
-
-				unsigned long t2 = tmp;
-
-				if(tmp < 0 || t2 > static_cast<unsigned long>(UINT32_MAX)) time.int_part = 0;
-				else time.int_part = static_cast<uint32_t>(t2);
-			}
-			break;
-		case 8:
-			{
-				int tmp = atoi(buf);
-				if(tmp < 0 || static_cast<unsigned int>(tmp) > static_cast<unsigned int>(UINT16_MAX)) time.dec_part = 0;
-				else time.dec_part = static_cast<uint16_t>(tmp);
-			}
-			break;
-		case 9:
 			data.valid = (buf[0] == 'A');
 			break;
-		case 10:
+		case 7:
 			if(buf[0] == 'D')
 				dgps = true;
 			else if(buf[0] == 'A')
@@ -209,7 +203,7 @@ public:
 			}
 			break;
 		}
-		if(read_num >= 10){
+		if(read_num >= 7){
 			if(ok){
 				read_num = 0;
 				return true;
@@ -219,8 +213,101 @@ public:
 		return false;
 	}
 
+	bool parse_GGA(const char *buf){
+		switch(read_num){
+			case 1:
+				read_float(buf, data.time);
+				break;
+			case 2:
+				read_float(buf, data.latitude);
+				break;
+			case 3:
+				north = (buf[0] == 'N');
+				break;
+			case 4:
+				read_float(buf, data.longitude);
+				break;
+			case 5:
+				east = (buf[0] == 'E');
+				break;
+			case 6:
+				data.valid = (buf[0] != '0');
+				data.dgps  = (buf[0] == '2');
+				break;
+			case 7:
+				//Serial.print("sat num: ");
+				//Serial.println(buf);
+				break;
+			case 8:
+				// DOP
+				//Serial.print("DOP: ");
+				//Serial.println(buf);
+				break;
+			case 9:
+				//Serial.print("altitude: ");
+				//Serial.println(buf);
+				read_float(buf, data.altitude);
+				break;
+			case 10:
+				// unit
+				//Serial.print("unit: ");
+				//Serial.println(buf);
+				data.is_meter = (buf[0] == 'M');
+				break;
+			case 11:
+				//Serial.print("altitude2: ");
+				//Serial.println(buf);
+				read_float(buf, data.altitude_geo);
+				break;
+			case 12:
+				//Serial.print("unit2: ");
+				//Serial.println(buf);
+				data.is_meter = (buf[0] == 'M');
+				break;
+			case 13:
+				//Serial.print("DGPS_time: ");
+				//Serial.println(buf);
+				break;
+			case 14:
+				//Serial.print("DGPS id: ");
+				//Serial.println(buf);
+				break;
+		}
+
+		if(read_num >= 14){
+			read_num = 0;
+		}
+
+		return false;
+	}
+
+	void read_float(const char *buf, float_t &f){
+		unsigned long tmp;
+		size_t start = 0;
+		size_t end = 0;
+		if(buf[0] == '0' && buf[1] != '.')
+			start++;
+		for(end=start;;end++){
+			if(*(buf+end) == '.') break;
+			if(*(buf+end) == '\0') return;
+		}
+		end--;
+		const char *endp = (buf+end);
+		tmp = strtoul(buf+start, const_cast<char**>(&endp), 10);
+		if(tmp > static_cast<unsigned long>(UINT32_MAX))
+			f.int_part = 0;
+		else
+			f.int_part = static_cast<uint32_t>(tmp);
+		end += 2;
+		tmp = strtoul(buf+end, nullptr, 10);
+		if(tmp > static_cast<unsigned long>(UINT16_MAX))
+			f.dec_part = 0;
+		else
+			f.dec_part = static_cast<uint16_t>(tmp);
+	}
+
 	bool parse8(const char c){
-		static char buf[10];
+		static char buf[15];
 		static uint8_t header_count = 0;
 		static uint8_t count = 0;
 
@@ -247,7 +334,6 @@ public:
 			}
 			break;
 		case ',':
-		case '.':
 		case '*':
 			buf[count] = '\0';
 			count = 0;

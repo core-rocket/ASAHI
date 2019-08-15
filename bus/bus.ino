@@ -13,6 +13,9 @@
 #define INIT_SAMPLING_RATE	10
 #define SAMPLING_RATE		100
 
+#define GPS_OUTPUT_RATE		5
+#define GPS_OUTPUT_INTERVAL	(1000 / GPS_OUTPUT_RATE)
+
 // センサ
 GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
 MPU6050 mpu;
@@ -65,7 +68,9 @@ void send_log(const char *str){
 void setup(){
 	// GPS初期化
 	gps.init();		// baud変更があるので初めに初期化
-	delay(1000);	// 念の為少し待つ
+	delay(1000);		// 念の為少し待つ
+	gps.set_interval(GPS_OUTPUT_INTERVAL);
+	gps.set_output(GPS::GGA);
 
 	// 無線機初期化
 	twelite.init();
@@ -106,12 +111,22 @@ void loop(){
 	if(gps.parse()){
 		sensor_data::gps_sended = false;
 		sensor_data::gps_time = gps_time;
+		auto &d = gps.data;
 		Serial.print("GPS: ");
-		if(!gps.data.valid)
+		if(!d.valid)
 			Serial.print("invalid: ");
 		Serial.print("UTC: ");
-		Serial.print(gps.data.time.int_part);
-		Serial.println("");
+		Serial.print(d.time.int_part);
+		Serial.print(".");
+		Serial.print(d.time.dec_part);
+		Serial.print(" lat=");
+		Serial.print(d.latitude.int_part);
+		Serial.print(".");
+		Serial.print(d.latitude.dec_part);
+		Serial.print(", lng=");
+		Serial.print(d.longitude.int_part);
+		Serial.print(".");
+		Serial.println(d.longitude.dec_part);
 	}
 
 	// 受信
@@ -154,19 +169,28 @@ void send_telemetry(){
 		// GPSデータ送信処理
 		const auto& data = sensor_data::gps;
 		GPS_time	t;
-		GPS_pos		p;
+		GPS_vec2	v;
 
-		t.time = p.time = gps_time;
+		// タイムスタンプ(内部時間)
+		t.time = v.time = gps_time;
 
+		// GPS測位時刻
 		t.time_int	= data.time.int_part;
 		t.time_dec	= data.time.dec_part;
-		twelite.send_simple(id_station, 0x09, t);
+		twelite.send_simple(id_station, 0x08, t);
 
-		p.lat_int	= data.latitude.int_part;
-		p.lat_dec	= data.latitude.dec_part;
-		p.lng_int	= data.longitude.int_part;
-		p.lng_dec	= data.longitude.dec_part;
-		twelite.send_simple(id_station, 0x0a, p);
+		// GPS緯度・経度
+		v.x_int	= data.latitude.int_part;
+		v.x_dec	= data.latitude.dec_part;
+		v.y_int	= data.longitude.int_part;
+		v.y_dec	= data.longitude.dec_part;
+		twelite.send_simple(id_station, 0x09, v);
+
+		v.x_int	= data.altitude.int_part;
+		v.x_dec	= data.altitude.dec_part;
+		v.y_int	= data.altitude_geo.int_part;
+		v.y_dec	= data.altitude_geo.dec_part;
+		twelite.send_simple(id_station, 0x0a, v);
 
 		gps_sended = true;
 	}
