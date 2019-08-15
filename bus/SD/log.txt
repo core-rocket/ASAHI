@@ -1,0 +1,11 @@
+begin
+buffer size (bytes): 1, time (sec): 29.06, rate (KB/sec): 18.04
+buffer size (bytes): 2, time (sec): 19.04, rate (KB/sec): 27.54
+buffer size (bytes): 4, time (sec): 14.67, rate (KB/sec): 35.73
+buffer size (bytes): 8, time (sec): 11.48, rate (KB/sec): 45.67
+buffer size (bytes): 16, time (sec): 10.14, rate (KB/sec): 51.68
+buffer size (bytes): 32, time (sec): 9.53, rate (KB/sec): 55.03
+buffer size (bytes): 64, time (sec): 9.20, rate (KB/sec): 56.99
+buffer size (bytes): 128, time (sec): 9.13, rate (KB/sec): 57.44
+buffer size (bytes): 256, time (sec): 8.98, rate (KB/sec): 58.41
+buffer size (bytes): 512, time (sec): 8.11, rate (KB/sec): 64.69
