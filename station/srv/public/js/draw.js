@@ -1,18 +1,25 @@
+var request = new XMLHttpRequest();
 var acc_ctx = document.getElementById('acc-chart').getContext('2d');
 
 function acc_onrefresh(chart){
+	request.open("GET", "/data/acc", false);
+	request.send(null);
+	if(request.readyState != 4 || request.status != 200)
+		return;
+	var data = JSON.parse(request.responseText);
+
 	var datasets = chart.config.data.datasets;
 	datasets[0].data.push({
 		x: Date.now(),
-		y: Math.random()
+		y: data.x
 	});
 	datasets[1].data.push({
 		x: Date.now(),
-		y: Math.random()
+		y: data.y
 	});
 	datasets[2].data.push({
 		x: Date.now(),
-		y: Math.random()
+		y: data.z
 	});
 }
 

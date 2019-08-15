@@ -8,8 +8,9 @@ end
 
 get '/data/acc' do
 	data = {
-		x: 1.0,
-		y: 2.0
+		x: 0.0,
+		y: 1.0,
+		z: 2.0
 	}
 	json data
 end
