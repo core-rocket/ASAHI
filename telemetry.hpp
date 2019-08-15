@@ -45,10 +45,10 @@ struct GPS_time {
 	uint16_t time_dec;
 } PACKED;
 
-struct GPS_pos {
+struct GPS_vec2 {
 	uint32_t time;
-	uint32_t lat_int;	uint16_t lat_dec;
-	uint32_t lng_int;	uint16_t lng_dec;
+	uint32_t x_int;	uint16_t x_dec;
+	uint32_t y_int;	uint16_t y_dec;
 } PACKED;
 
 #endif

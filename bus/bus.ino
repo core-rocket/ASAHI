@@ -169,19 +169,28 @@ void send_telemetry(){
 		// GPSデータ送信処理
 		const auto& data = sensor_data::gps;
 		GPS_time	t;
-		GPS_pos		p;
+		GPS_vec2	v;
 
-		t.time = p.time = gps_time;
+		// タイムスタンプ(内部時間)
+		t.time = v.time = gps_time;
 
+		// GPS測位時刻
 		t.time_int	= data.time.int_part;
 		t.time_dec	= data.time.dec_part;
-		twelite.send_simple(id_station, 0x09, t);
+		twelite.send_simple(id_station, 0x08, t);
 
-		p.lat_int	= data.latitude.int_part;
-		p.lat_dec	= data.latitude.dec_part;
-		p.lng_int	= data.longitude.int_part;
-		p.lng_dec	= data.longitude.dec_part;
-		twelite.send_simple(id_station, 0x0a, p);
+		// GPS緯度・経度
+		v.x_int	= data.latitude.int_part;
+		v.x_dec	= data.latitude.dec_part;
+		v.y_int	= data.longitude.int_part;
+		v.y_dec	= data.longitude.dec_part;
+		twelite.send_simple(id_station, 0x09, v);
+
+		v.x_int	= data.altitude.int_part;
+		v.x_dec	= data.altitude.dec_part;
+		v.y_int	= data.altitude_geo.int_part;
+		v.y_dec	= data.altitude_geo.dec_part;
+		twelite.send_simple(id_station, 0x0a, v);
 
 		gps_sended = true;
 	}

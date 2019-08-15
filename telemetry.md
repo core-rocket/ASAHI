@@ -71,9 +71,9 @@
 |0x05| 8|uint32_t + float(4)|気圧|
 |0x06| 8|uint32_t + float(4)|高度|
 |0x07| 5|uint32_t + uint8_t|GPSフラグ|
-|0x08|12|uint32_t + uint32_t + uint32_t|GPS高度(海抜高度, ジオイド高度)|
-|0x09|10|uint32_t + (uint32_t + uint16_t)|GPS測位時刻(UTC)|
-|0x0a|16|uint32_t + (uint32_t + uint16_t) * 2|GPS緯度経度|
+|0x08|10|uint32_t + (uint32_t + uint16_t)|GPS測位時刻(UTC)|
+|0x09|16|uint32_t + (uint32_t + uint16_t) * 2|GPS緯度経度|
+|0x0a|16|uint32_t + (uint32_t + uint16_t) * 2|GPS高度(海抜高度, ジオイド高度)|
 |0x7f|?|?|reserved|
 
 TODO: タイムスタンプつけるべきでは...
