@@ -132,15 +132,15 @@ void loop(){
 		sensor_data::gps_sended = false;
 		sensor_data::gps_time = gps_time;
 		auto &d = gps.data;
-/*
+
 		Serial.print("GPS: ");
 		if(!d.valid)
-			Serial.print("invalid: ");
+			Serial.println("invalid: ");
 		Serial.print("UTC: ");
 		Serial.print(d.time.int_part);
 		Serial.print(".");
 		Serial.print(d.time.dec_part);
-		Serial.print(" lat=");
+/*		Serial.print(" lat=");
 		Serial.print(d.latitude.int_part);
 		Serial.print(".");
 		Serial.print(d.latitude.dec_part);
@@ -189,7 +189,9 @@ void save_data(){
 
 	if(!gps_sended){
 		// GPSデータ送信処理
-		const auto& data = sensor_data::gps;
+		Serial.println("send GPS");
+
+		const auto& data = ::gps.data;
 		GPS_time	t;
 		GPS_vec2	v;
 
@@ -197,6 +199,8 @@ void save_data(){
 		t.time = v.time = gps_time;
 
 		// GPS測位時刻
+		Serial.print("GPS time: ");
+		Serial.print(data.time.int_part);
 		t.time_int	= data.time.int_part;
 		t.time_dec	= data.time.dec_part;
 		twelite.send_simple(id_station, 0x08, t);
