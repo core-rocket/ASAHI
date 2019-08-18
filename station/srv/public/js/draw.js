@@ -23,6 +23,7 @@ function acc_onrefresh(chart){
 		dataset[1].data.push({ x: client_time, y: data[i].y });
 		dataset[2].data.push({ x: client_time, y: data[i].z });
 	}
+	document.getElementById("acc_time").innerHTML = "<h4>time: " + last_acc_time + "</h4>";
 }
 
 function gyro_onrefresh(chart){
@@ -43,6 +44,7 @@ function gyro_onrefresh(chart){
 		dataset[1].data.push({ x: client_time, y: data[i].y });
 		dataset[2].data.push({ x: client_time, y: data[i].z });
 	}
+	document.getElementById("gyro_time").innerHTML = "<h4>time: " + last_gyro_time + "</h4>";
 }
 
 var acc_chart = new Chart(acc_ctx, {
