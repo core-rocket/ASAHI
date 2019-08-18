@@ -30,6 +30,7 @@ void loop(){
 
 	if(launch_time != 0){
 		digitalWrite(pin::led, HIGH);
+		Serial.println("flight");
 	}
 }
 
