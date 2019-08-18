@@ -180,7 +180,6 @@ void loop(){
 	}
 
 	// データ保存
-	Serial.println("save");
 	save_data();
 //	delay(100);
 }
@@ -235,12 +234,12 @@ void save_data(){
 		};
 
 		if(file::motion){
-			Serial.print("write  ");
+	//		Serial.print("write  ");
 			file::motion.write(0x01);
 			file::motion.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
 			file::motion.write(0x02);
 			file::motion.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
-			Serial.println("ok");
+	//		Serial.println("ok");
 		}
 
 		send_motion(acc, gyro);
@@ -254,11 +253,11 @@ void save_data(){
 
 void send_motion(const Vec16_t &acc, const Vec16_t &gyro){
 	static uint32_t last = 0;
-	Serial.print(last);
-	Serial.print(" ");
-	Serial.println(acc.time);
+	//Serial.print(last);
+	//Serial.print(" ");
+	//Serial.println(acc.time);
 	if((acc.time - last) > static_cast<uint32_t>(100)){
-		Serial.println("send");
+		//Serial.println("send");
 		twelite.send_simple(id_station, 0x01, acc);
 		twelite.send_simple(id_station, 0x02, gyro);
 		last = acc.time;
