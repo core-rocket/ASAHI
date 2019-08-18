@@ -49,8 +49,8 @@ namespace global {
 
 // センサデータ
 namespace sensor_data {
-	volatile queue<MPU6050::data_t, 5> motion;
-	volatile queue<unsigned long, 5> motion_time;
+	volatile queue<MPU6050::data_t, 3> motion;
+	volatile queue<unsigned long, 3> motion_time;
 
 	bool gps_sended;
 	uint32_t gps_time;
@@ -62,7 +62,8 @@ namespace file {
 }
 
 // 関数
-void send_telemetry();	// テレメトリ送信
+void save_data();		// データ保存(ファイル, テレメトリ送信)
+void send_motion(const Vec16_t &acc, const Vec16_t &gyro);		// モーションデータ送信
 void timer_handler();	// タイマ割り込みハンドラ
 
 // 文字列でログを送る(あとで消す)
@@ -131,6 +132,7 @@ void loop(){
 		sensor_data::gps_sended = false;
 		sensor_data::gps_time = gps_time;
 		auto &d = gps.data;
+/*
 		Serial.print("GPS: ");
 		if(!d.valid)
 			Serial.print("invalid: ");
@@ -146,6 +148,7 @@ void loop(){
 		Serial.print(d.longitude.int_part);
 		Serial.print(".");
 		Serial.println(d.longitude.dec_part);
+*/
 	}
 
 	// 受信
@@ -172,16 +175,17 @@ void loop(){
 
 	// ミッション部へのコマンド送信テスト
 	if(global::mode == Mode::flight){
-		twelite.send_extend(id_mission, 0x02, " ");
+//		twelite.send_extend(id_mission, 0x02, " ");
 //		Serial.println("send flight mode command");
 	}
 
-	// テレメトリ送信
-	send_telemetry();
+	// データ保存
+	Serial.println("save");
+	save_data();
 //	delay(100);
 }
 
-void send_telemetry(){
+void save_data(){
 	using namespace sensor_data;
 
 	if(!gps_sended){
@@ -214,8 +218,6 @@ void send_telemetry(){
 		gps_sended = true;
 	}
 
-//	Serial.print(motion.size());
-
 	for(size_t i=0;i<motion.size();i++){
 		const auto &m = motion.front();
 		const auto &t = motion_time.front();
@@ -232,21 +234,35 @@ void send_telemetry(){
 			m.gyro[2],
 		};
 
-		Serial.print("write  ");
-		file::motion.write(0x01);
-		file::motion.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
-		file::motion.write(0x02);
-		file::motion.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
-		Serial.println("ok");
+		if(file::motion){
+			Serial.print("write  ");
+			file::motion.write(0x01);
+			file::motion.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
+			file::motion.write(0x02);
+			file::motion.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
+			Serial.println("ok");
+		}
 
-		twelite.send_simple(id_station, 0x01, acc);
-		twelite.send_simple(id_station, 0x02, gyro);
+		send_motion(acc, gyro);
 
 		motion.pop();
 		motion_time.pop();
 	}
 
 	file::motion.flush();
+}
+
+void send_motion(const Vec16_t &acc, const Vec16_t &gyro){
+	static uint32_t last = 0;
+	Serial.print(last);
+	Serial.print(" ");
+	Serial.println(acc.time);
+	if((acc.time - last) > static_cast<uint32_t>(100)){
+		Serial.println("send");
+		twelite.send_simple(id_station, 0x01, acc);
+		twelite.send_simple(id_station, 0x02, gyro);
+		last = acc.time;
+	}
 }
 
 void timer_handler(){
