@@ -77,5 +77,3 @@
 |0x09|16|uint32_t + (uint32_t + uint16_t) * 2|GPS緯度経度|
 |0x0a|16|uint32_t + (uint32_t + uint16_t) * 2|GPS高度(海抜高度, ジオイド高度)|
 |0x7f|?|?|reserved|
-
-TODO: タイムスタンプつけるべきでは...

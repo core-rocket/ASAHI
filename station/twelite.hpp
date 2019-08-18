@@ -7,7 +7,7 @@ namespace twelite {
 	extern TWE_Lite *twe;
 
 	struct vec_t {
-		uint32_t time;
+		float time;
 		float x, y, z;
 	};
 

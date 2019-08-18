@@ -73,12 +73,15 @@ void get_acc(const TWE_Lite *twe){
 		return;
 	}
 
+	float t;
+	t = static_cast<float>(acc->time) / 1000.0f;
+
 	float v[3];
 	for(int i=0;i<3;i++)
 		v[i] = static_cast<float>(acc->raw[i]) / 16384.0;
 
 	twelite::latest_acc = {
-		acc->time,
+		t,
 		v[0],
 		v[1],
 		v[2]
@@ -92,17 +95,60 @@ void get_gyro(const TWE_Lite *twe){
 		return;
 	}
 
+	float t;
+	t = static_cast<float>(gyro->time) / 1000.0f;
+
 	float v[3];
 	for(int i=0;i<3;i++)
 		v[i] = static_cast<float>(gyro->raw[i]) / 131.0;
 
 	twelite::latest_gyro = {
-		gyro->time,
+		t,
 		v[0],
 		v[1],
 		v[2]
 	};
 	twelite::gyro.push(twelite::latest_gyro);
+}
+
+void get_gps(const TWE_Lite *twe){
+	switch(twe->cmd_type()){
+		case 0x07:
+			std::cout << "GPS flag" << std::endl;
+			break;
+		case 0x08:
+			//std::cout << "GPS time" << std::endl;
+			{
+				auto *time = twe->get_data<GPS_time>();
+				if(time == nullptr)
+					return;
+//				std::cout << "UTC: "
+//					<< time->time_int << "." << time->time_dec << std::endl;
+			}
+			break;
+		case 0x09:
+			//std::cout << "GPS pos" << std::endl;
+			{
+				auto *pos = twe->get_data<GPS_vec2>();
+				if(pos == nullptr)
+					return;
+//				std::cout
+//					<< "lat = " << pos->x_int << "." << pos->x_dec
+//					<< ", lng = " << pos->y_int << "." << pos->y_dec << std::endl;
+			}
+			break;
+		case 0x0a:
+			//std::cout << "GPS altitude" << std::endl;
+			{
+				auto *alt = twe->get_data<GPS_vec2>();
+				if(alt == nullptr)
+					return;
+//				std::cout
+//					<< "alt = " << alt->x_int << "." << alt->x_dec
+//					<< ", alt geo = " << alt->y_int << "." << alt->y_dec << std::endl;
+			}
+			break;
+	}
 }
 
 // 簡易形式で受信したデータをパースする
@@ -116,6 +162,12 @@ void parse_simple(const TWE_Lite *twe){
 			break;
 		case 0x02:	// 3軸ジャイロ
 			get_gyro(twe);
+			break;
+		case 0x07:
+		case 0x08:
+		case 0x09:
+		case 0x0a:
+			get_gps(twe);
 			break;
 		default:
 			std::cout
