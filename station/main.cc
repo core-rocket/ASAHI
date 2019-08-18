@@ -34,7 +34,7 @@ int main(int argc, char **argv){
 
 		if(cmd == "exit"){	// 雑
 			break;
-		}else if(cmd == "show"){
+		}else if(cmd == "motion" || cmd == "m"){
 			auto acc = latest_acc;
 			auto gyro= latest_gyro;
 			std::cout << "acc:  ";

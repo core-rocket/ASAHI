@@ -8,37 +8,43 @@ var last_gyro_time= 0.0;
 function acc_onrefresh(chart){
 	request.open("GET", "/data/acc", false);
 	request.send(null);
-	if(request.readyState != 4 || request.status != 200)
+	if(request.readyState != 4 || request.status != 200){
+		last_acc_time = 0.0;
 		return;
+	}
 	var data = JSON.parse(request.responseText);
 
 	var dataset = chart.config.data.datasets;
 	for(var i=0;i<Object.keys(data).length;i++){
 		const client_time = Date.now();
-		if(last_acc_time > data[i].time) continue;
+		if(last_acc_time >= data[i].time) continue;
 		last_acc_time = data[i].time;
 		dataset[0].data.push({ x: client_time, y: data[i].x });
 		dataset[1].data.push({ x: client_time, y: data[i].y });
 		dataset[2].data.push({ x: client_time, y: data[i].z });
 	}
+	document.getElementById("acc_time").innerHTML = "<h4>time: " + last_acc_time + "</h4>";
 }
 
 function gyro_onrefresh(chart){
 	request.open("GET", "/data/gyro", false);
 	request.send(null);
-	if(request.readyState != 4 || request.status != 200)
+	if(request.readyState != 4 || request.status != 200){
+		last_gyro_time = 0.0;
 		return;
+	}
 	var data = JSON.parse(request.responseText);
 
 	var dataset = chart.config.data.datasets;
 	for(var i=0;i<Object.keys(data).length;i++){
 		const client_time = Date.now();
-		if(last_acc_time > data[i].time) continue;
+		if(last_gyro_time >= data[i].time) continue;
 		last_gyro_time = data[i].time;
 		dataset[0].data.push({ x: client_time, y: data[i].x });
 		dataset[1].data.push({ x: client_time, y: data[i].y });
 		dataset[2].data.push({ x: client_time, y: data[i].z });
 	}
+	document.getElementById("gyro_time").innerHTML = "<h4>time: " + last_gyro_time + "</h4>";
 }
 
 var acc_chart = new Chart(acc_ctx, {
