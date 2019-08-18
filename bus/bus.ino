@@ -1,4 +1,6 @@
 #include <MsTimer2.h>				// タイマ
+#include <SD.h>
+
 #include "../TWE-Lite/TWE-Lite.hpp"
 #include "../telemetry.hpp"
 #define GPS_USE_HARDWARE_SERIAL
@@ -15,6 +17,8 @@
 
 #define GPS_OUTPUT_RATE		5
 #define GPS_OUTPUT_INTERVAL	(1000 / GPS_OUTPUT_RATE)
+
+#define SD_CS_PIN			10
 
 // センサ
 GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
@@ -81,7 +85,15 @@ void setup(){
 	Wire.begin();
 	mpu.init();
 	MsTimer2::set(timer::init_dt, timer_handler);
-	send_log("finish");
+	send_log("sensor finish");
+
+	// SDカード初期化
+	send_log("SD init");
+	if(SD.begin(SD_CS_PIN)){
+		send_log("SD ok");
+	}else{
+		send_log("SD failed");
+	}
 
 	global::mode = Mode::standby;
 
@@ -134,8 +146,8 @@ void loop(){
 		Serial.print("recv: ");
 		send_log("recv");
 
-		if(twelite.is_response())
-			Serial.println("response");
+//		if(twelite.is_response())
+//			Serial.println("response");
 
 		if(twelite.is_simple()){
 			Serial.println("simple");
