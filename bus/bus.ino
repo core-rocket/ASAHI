@@ -49,12 +49,16 @@ namespace global {
 
 // センサデータ
 namespace sensor_data {
-	volatile queue<MPU6050::data_t, 10> motion;
-	volatile queue<unsigned long, 10> motion_time;
+	volatile queue<MPU6050::data_t, 5> motion;
+	volatile queue<unsigned long, 5> motion_time;
 
 	bool gps_sended;
 	uint32_t gps_time;
 	GPS::data_t gps;
+}
+
+namespace file {
+	File motion;
 }
 
 // 関数
@@ -81,7 +85,6 @@ void setup(){
 	send_log("setup");
 
 	// センサ初期化
-	send_log("sensor init");
 	Wire.begin();
 	mpu.init();
 	MsTimer2::set(timer::init_dt, timer_handler);
@@ -89,10 +92,12 @@ void setup(){
 
 	// SDカード初期化
 	send_log("SD init");
-	if(SD.begin(SD_CS_PIN)){
-		send_log("SD ok");
-	}else{
+	if(!SD.begin(SD_CS_PIN)){
 		send_log("SD failed");
+	}
+	file::motion = SD.open("motion.log", FILE_WRITE);
+	if(!file::motion){
+		send_log("fopen failed");
 	}
 
 	global::mode = Mode::standby;
@@ -105,6 +110,8 @@ void setup(){
 
 	// タイマスタート
 	MsTimer2::start();
+
+	send_log("setup finish");
 }
 
 // メインループ
@@ -207,7 +214,7 @@ void send_telemetry(){
 		gps_sended = true;
 	}
 
-//	Serial.println(motion.size());
+	Serial.print(motion.size());
 
 	for(size_t i=0;i<motion.size();i++){
 		const auto &m = motion.front();
@@ -225,6 +232,10 @@ void send_telemetry(){
 			m.gyro[2],
 		};
 
+		Serial.print("write  ");
+		file::motion.write(reinterpret_cast<const uint8_t*>(&acc), 10);
+		Serial.println("ok");
+
 		twelite.send_simple(id_station, 0x01, acc);
 		twelite.send_simple(id_station, 0x02, gyro);
 
@@ -232,6 +243,7 @@ void send_telemetry(){
 		motion_time.pop();
 	}
 
+	file::motion.flush();
 }
 
 void timer_handler(){

@@ -32,7 +32,7 @@ class TWE_Lite {
 public:
 	// コンパイル時定数
 	constexpr static long int default_brate		= 115200;
-	constexpr static uint8_t  default_buf_size	= 100;
+	constexpr static uint8_t  default_buf_size	= 30;
 	constexpr static uint16_t MSB				= 0x8000;
 
 	// コンストラクタ
