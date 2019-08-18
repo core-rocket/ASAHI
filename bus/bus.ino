@@ -172,8 +172,8 @@ void loop(){
 
 	// ミッション部へのコマンド送信テスト
 	if(global::mode == Mode::flight){
-//		twelite.send_extend(id_mission, 0x02, " ");
-		Serial.println("send flight mode command");
+		twelite.send_extend(id_mission, 0x02, " ");
+//		Serial.println("send flight mode command");
 	}
 
 	// テレメトリ送信
@@ -214,7 +214,7 @@ void send_telemetry(){
 		gps_sended = true;
 	}
 
-	Serial.print(motion.size());
+//	Serial.print(motion.size());
 
 	for(size_t i=0;i<motion.size();i++){
 		const auto &m = motion.front();
@@ -233,7 +233,10 @@ void send_telemetry(){
 		};
 
 		Serial.print("write  ");
-		file::motion.write(reinterpret_cast<const uint8_t*>(&acc), 10);
+		file::motion.write(0x01);
+		file::motion.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
+		file::motion.write(0x02);
+		file::motion.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
 		Serial.println("ok");
 
 		twelite.send_simple(id_station, 0x01, acc);
