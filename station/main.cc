@@ -1,7 +1,10 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 #include <thread>
 #include "twelite.hpp"
+
+bool run_flag;
 
 void print_vec(const twelite::vec_t &v);
 
@@ -16,19 +19,38 @@ int main(int argc, char **argv){
 		return -1;
 	}
 
+	run_flag = true;
+
 	std::thread twelite_thread(twelite::loop);
 	std::thread save_thread(save_loop);
 
+	std::string cmd;
+
 	while(true){
 		using namespace twelite;
-		auto acc = latest_acc;
-		auto gyro= latest_gyro;
-		std::cout << "acc:  ";
-		print_vec(acc);
-		std::cout << "gyro: ";
-		print_vec(gyro);
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		std::cout << "> ";
+		std::cin >> cmd;
+
+		if(cmd == "exit"){	// 雑
+			break;
+		}else if(cmd == "show"){
+			auto acc = latest_acc;
+			auto gyro= latest_gyro;
+			std::cout << "acc:  ";
+			print_vec(acc);
+			std::cout << "gyro: ";
+			print_vec(gyro);
+		}else if(cmd == "unlock"){
+			for(size_t i=0;i<3;i++)
+				cmd_queue.push(0x02);
+		}
 	}
+
+	run_flag = false;
+
+	twelite_thread.join();
+	save_thread.join();
 
 	return 0;
 }
@@ -52,7 +74,7 @@ void save_loop(){
 	f_acc.open("log/acc.csv", std::ios::app);
 	f_gyro.open("log/gyro.csv", std::ios::app);
 
-	while(true){
+	while(run_flag){
 		for(size_t i=0;i<acc.size();i++){
 			const auto &v = acc.front();
 			fwrite_vec(f_acc, v);
@@ -63,6 +85,6 @@ void save_loop(){
 			fwrite_vec(f_gyro, v);
 			gyro.pop();
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+//		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 }

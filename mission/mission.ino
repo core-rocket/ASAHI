@@ -1,6 +1,7 @@
 #include <MsTimer2.h>					// タイマー
 #include <Wire.h>						// i2c
 #include <Adafruit_BMP280.h>			// BMP280ライブラリ
+#include <Servo.h>						// サーボ
 
 #include "../TWE-Lite/TWE-Lite.hpp"		// TWE-Lite
 #include "../telemetry.hpp"
@@ -10,7 +11,6 @@
 
 #ifdef BBM		// BBM試験用パラメータ
 
-	#define ALTITUDE_PARACHUTE		135.0
 	#define ALTITUDE_LEAFING		120.0
 
 
@@ -20,7 +20,6 @@
 	// また，シミュレーション担当の人間に確認を取ること．
 
 	// 高度の設定(単位は全てm)
-	//#define ALTITUDE_PARACHUTE						// 開傘高度(m)
 	#define ALTITUDE_LEAFING		315.0				// リーフィング解除高度(m)
 #endif
 
@@ -37,6 +36,8 @@
 // ピン設定
 namespace pin {
 	constexpr size_t flight = 2;		// フライトピン
+
+	constexpr size_t servo	= 9;
 
 	// LED
 	constexpr size_t led_arduino = 13;
@@ -59,6 +60,7 @@ namespace global {
 	// 割り込みハンドラから読み書きする変数
 	volatile Mode			mode;				// 動作モード
 	volatile unsigned long	launch_time = 0;	// 離床からの経過時刻
+	size_t					descent_count=0;	// 連続下降回数
 
 	// BMP280
 	volatile uint32_t	bmp_last_time	= 0;			// 最後にデータ取得した時刻
@@ -67,6 +69,7 @@ namespace global {
 	volatile float		press_buf[BMP280_BUF_SIZE];		// 気圧バッファ(Pa)
 	float				temperature		= 0.0;			// 移動平均をとった気温
 	float				pressure		= 0.0;			// 移動平均をとった気圧
+	float				last_altitude	= 0.0;			// 1つ前の高度
 	float				altitude		= 0.0;			// 最新の高度(m)
 }
 
@@ -75,7 +78,8 @@ namespace sensor {
 	Adafruit_BMP280			bmp;	// BMP280
 }
 
-TWE_Lite twe(4, 3, 38400);
+Servo		servo;
+TWE_Lite	twe(4, 3, 38400);
 
 // 関数
 void init_led(const size_t pin);// LED初期設定
@@ -87,7 +91,7 @@ void error();					// エラー(内蔵LED点滅)
 
 void setup(){
 	global::launch_time = millis();
-	global::mode = Mode::standby;
+	global::mode = Mode::flight;
 	Serial.begin(38400);
 
 	// LED初期設定
@@ -104,6 +108,12 @@ void setup(){
 	// フライトピン設定
 	pinMode(pin::flight, INPUT_PULLUP);
 
+	// サーボ初期化
+	servo.attach(pin::servo);
+	servo.write(75);
+	delay(200);
+	servo.detach();
+
 	// TWE-Lite初期化
 	twe.init();
 
@@ -117,14 +127,29 @@ void loop(){
 	const auto time = millis() - launch_time;	// 離床からの時間
 
 	update_altitude();							// 高度を更新する
+	const auto& last_altitude = global::last_altitude;
 	const auto& altitude = global::altitude;
 
 	switch(global::mode){
 		case Mode::standby:
+			Serial.println("mode: standby");
+			if(twe.try_recv(100)){
+				if(twe.from_id() != id_bus)
+					break;
+				if(twe.is_extended()){
+					// コマンド
+					if(twe.response_id() == 0x02){		// フライトモード移行
+						global::mode = Mode::flight;
+						Serial.println("flight mode on");
+					}
+				}
+			}
 			break;
 		case Mode::flight:
+			Serial.println("mode: flight");
 			break;
 		case Mode::rising:
+			Serial.println("mode: rising");
 			if(time >= TIME_RISING){
 				// digitalWrite(pin::led1, HIGH);
 				global::mode = Mode::parachute;
@@ -133,15 +158,36 @@ void loop(){
 			break;
 		case Mode::parachute:
 			// 開傘判定と開傘
-			if(altitude >= ALTITUDE_PARACHUTE){
-				// digitalWrite(pin::led2, HIGH);	// 開傘(のつもり)
+			Serial.println("mode: parachute");
+
+			// 下降しているかどうか
+			if(static_cast<int>(altitude*10) < static_cast<int>(last_altitude*10))
+				global::descent_count++;
+			else
+				global::descent_count = 0;
+
+			// 開傘判定
+			// 5回連続で下降 or タイムアウト
+			if(global::descent_count >= 4 || time > TIMEOUT_PARACHUTE){
+				Serial.println("do parachute!!!!");
+
+				servo.attach(pin::servo);
+				servo.write(15);
+				delay(200);
+				servo.detach();
+
 				global::mode = Mode::leafing;
 				Serial.println("mode parachute -> leafing");
 			}
+
 			break;
 		case Mode::leafing:
 			// リーフィング判定とリーフィング
-			if(altitude <= ALTITUDE_LEAFING){
+			Serial.println("mode: leafing");
+
+			// リーフィング判定
+			// 指定高度以下になったら or タイムアウト
+			if(altitude <= ALTITUDE_LEAFING || time > TIMEOUT_LEAFING){
 				// digitalWrite(pin::led3, HIGH);	// リーフィング解除(のつもり)
 				Serial.println("leafing!");
 			}
@@ -150,9 +196,14 @@ void loop(){
 
 	send_telemetry();
 
-	Serial.println(altitude);
+	Serial.print("launch=");
+	Serial.print(global::launch_time);
+	Serial.print(", altitude=");
+	Serial.print(altitude);
+	Serial.print(", descent=");
+	Serial.println(global::descent_count);
 
-	delay(100);
+//	delay(100);
 }
 
 void init_led(const size_t pin){
@@ -170,7 +221,7 @@ void flightpin_handler(){
 	detachInterrupt(digitalPinToInterrupt(pin::flight));	// ピン割り込みを解除
 
 	global::launch_time = t;		// 離床時刻
-	global::mode = Mode::flight;	// フライトモードに移行
+	global::mode = Mode::rising;	// 飛翔モードに移行
 }
 
 void timer_handler(){
@@ -208,6 +259,7 @@ void update_altitude(){
 	t = t + 273.15;		// Kにする
 	p = p / 100.0f;		// hPaにする
 
+	global::last_altitude = global::altitude;
 	global::altitude = ((pow(p_0/p, 1/5.257) - 1)*t) / 0.0065;
 }
 
@@ -218,14 +270,17 @@ void send_telemetry(){
 	// 気温(K)
 	data.value = global::temperature;
 	twe.send_simple(id_bus, 0x04, data);
+	delay(10);
 
 	// 気圧(hPa)
 	data.value = global::pressure;
 	twe.send_simple(id_bus, 0x05, data);
+	delay(10);
 
 	// 高度(m)
 	data.value = global::altitude;
 	twe.send_simple(id_bus, 0x06, data);
+	delay(10);
 }
 
 void error(){
