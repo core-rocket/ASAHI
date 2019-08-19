@@ -49,8 +49,8 @@ namespace global {
 
 // センサデータ
 namespace sensor_data {
-	volatile queue<MPU6050::data_t, 3> motion;
-	volatile queue<unsigned long, 3> motion_time;
+	volatile queue<MPU6050::data_t, 5> motion;
+	volatile queue<unsigned long, 5> motion_time;
 
 	bool gps_sended;
 	uint32_t gps_time;
@@ -64,6 +64,7 @@ namespace file {
 // 関数
 void save_data();		// データ保存(ファイル, テレメトリ送信)
 void send_motion(const Vec16_t &acc, const Vec16_t &gyro);		// モーションデータ送信
+void send_command(const uint8_t &cmd);
 void timer_handler();	// タイマ割り込みハンドラ
 
 // 文字列でログを送る(あとで消す)
@@ -129,7 +130,7 @@ void loop(){
 
 	const uint32_t gps_time = millis();
 	if(gps.parse()){
-		sensor_data::gps_sended = false;
+		sensor_data::gps_sended = !gps.data.valid;	// 保存する時falseになる
 		sensor_data::gps_time = gps_time;
 		auto &d = gps.data;
 
@@ -154,7 +155,7 @@ void loop(){
 	// 受信
 	if(twelite.try_recv(10)){
 		Serial.print("recv: ");
-		send_log("recv");
+		//send_log("recv");
 
 //		if(twelite.is_response())
 //			Serial.println("response");
@@ -173,15 +174,13 @@ void loop(){
 		}
 	}
 
-	// ミッション部へのコマンド送信テスト
+	// ミッション部へのコマンド送信
 	if(global::mode == Mode::flight){
-//		twelite.send_extend(id_mission, 0x02, " ");
-//		Serial.println("send flight mode command");
+		send_command(0x02);
 	}
 
 	// データ保存
 	save_data();
-//	delay(100);
 }
 
 void save_data(){
@@ -189,9 +188,10 @@ void save_data(){
 
 	if(!gps_sended){
 		// GPSデータ送信処理
-		Serial.println("send GPS");
+		//Serial.println("send GPS");
 
 		const auto& data = ::gps.data;
+
 		GPS_time	t;
 		GPS_vec2	v;
 
@@ -199,8 +199,8 @@ void save_data(){
 		t.time = v.time = gps_time;
 
 		// GPS測位時刻
-		Serial.print("GPS time: ");
-		Serial.print(data.time.int_part);
+		//Serial.print("GPS time: ");
+		//Serial.print(data.time.int_part);
 		t.time_int	= data.time.int_part;
 		t.time_dec	= data.time.dec_part;
 		twelite.send_simple(id_station, 0x08, t);
@@ -266,6 +266,15 @@ void send_motion(const Vec16_t &acc, const Vec16_t &gyro){
 		twelite.send_simple(id_station, 0x02, gyro);
 		last = acc.time;
 	}
+}
+
+void send_command(const uint8_t &cmd){
+	static uint32_t last = 0;
+	uint32_t now = millis();
+	if((now - last) > static_cast<uint32_t>(100)){
+		twelite.send_extend(id_mission, cmd, " ");
+	}
+	last = now;
 }
 
 void timer_handler(){

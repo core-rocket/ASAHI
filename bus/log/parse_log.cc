@@ -16,6 +16,8 @@ int main(int argc, char **argv){
 	size_t size= 0;
 	bool flag = true;
 
+	uint32_t last_acc_time = 0.0;
+	uint32_t acc_dt = 0.0;
 	Vec16_t *acc, *gyro;
 
 	while(true){
@@ -37,7 +39,11 @@ int main(int argc, char **argv){
 		switch(type){
 			case 0x01:
 				acc = reinterpret_cast<Vec16_t*>(buf);
-				printf("acc: time=%u, x=%u, y=%u, z=%u\n", acc->time, acc->x, acc->y, acc->z);
+				acc_dt = acc->time - last_acc_time;
+				last_acc_time = acc->time;
+				printf("acc: ");
+				printf("dt=%u", acc_dt);
+				printf(", time=%u, x=%f, y=%f, z=%f\n", acc->time, static_cast<float>(acc->x)/16384.0, static_cast<float>(acc->y)/16384.0, static_cast<float>(acc->z)/16384.0);
 				break;
 		}
 	}
