@@ -122,8 +122,8 @@ void get_gps(const TWE_Lite *twe){
 				auto *time = twe->get_data<GPS_time>();
 				if(time == nullptr)
 					return;
-//				std::cout << "UTC: "
-//					<< time->time_int << "." << time->time_dec << std::endl;
+				std::cout << "UTC: "
+					<< time->time_int << "." << time->time_dec << std::endl;
 			}
 			break;
 		case 0x09:
@@ -132,9 +132,9 @@ void get_gps(const TWE_Lite *twe){
 				auto *pos = twe->get_data<GPS_vec2>();
 				if(pos == nullptr)
 					return;
-//				std::cout
-//					<< "lat = " << pos->x_int << "." << pos->x_dec
-//					<< ", lng = " << pos->y_int << "." << pos->y_dec << std::endl;
+				std::cout
+					<< "lat = " << pos->x_int << "." << pos->x_dec
+					<< ", lng = " << pos->y_int << "." << pos->y_dec << std::endl;
 			}
 			break;
 		case 0x0a:
