@@ -135,8 +135,10 @@ void loop(){
 		auto &d = gps.data;
 
 		Serial.print("GPS: ");
-		if(!d.valid)
+		if(!d.valid){
 			Serial.println("invalid: ");
+			send_log("invalid");
+		}
 		Serial.print("UTC: ");
 		Serial.print(d.time.int_part);
 		Serial.print(".");
