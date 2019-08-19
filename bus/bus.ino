@@ -58,7 +58,7 @@ namespace sensor_data {
 }
 
 namespace file {
-	File motion;
+	File data;
 }
 
 // 関数
@@ -97,8 +97,8 @@ void setup(){
 	if(!SD.begin(SD_CS_PIN)){
 		send_log("SD failed");
 	}
-	file::motion = SD.open("motion.log", FILE_WRITE);
-	if(!file::motion){
+	file::data = SD.open("DATA.LOG", FILE_WRITE);
+	if(!file::data){
 		send_log("fopen failed");
 	}
 
@@ -239,12 +239,12 @@ void save_data(){
 			m.gyro[2],
 		};
 
-		if(file::motion){
+		if(file::data){
 	//		Serial.print("write  ");
-			file::motion.write(0x01);
-			file::motion.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
-			file::motion.write(0x02);
-			file::motion.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
+			file::data.write(0x01);
+			file::data.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
+			file::data.write(0x02);
+			file::data.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
 	//		Serial.println("ok");
 		}
 
@@ -254,7 +254,7 @@ void save_data(){
 		motion_time.pop();
 	}
 
-	file::motion.flush();
+	file::data.flush();
 }
 
 void send_motion(const Vec16_t &acc, const Vec16_t &gyro){
