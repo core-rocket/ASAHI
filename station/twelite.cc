@@ -217,5 +217,20 @@ void parse_simple(const TWE_Lite *twe){
 }
 
 void parse_extend(const TWE_Lite *twe){
-	std::cout << "parse_extend " << std::endl;
+//	std::cout << "parse_extend("
+//		<< static_cast<uint32_t>(twe->response_id())
+//		<< ")"
+//		<< std::endl;
+	switch(twe->response_id()){
+		case 0x00:	// bus status
+			std::cout
+				<< "bus status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
+			break;
+		default:
+			std::cout
+				<< "unknown type data(extend format)" << std::endl
+				<< "\tresponse_id = 0x" << std::hex << static_cast<uint32_t>(twe->response_id()) << std::endl
+				<< "\tlength = " << std::dec << twe->get_length() << std::endl;
+			break;
+	}
 }
