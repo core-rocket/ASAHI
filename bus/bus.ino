@@ -45,7 +45,7 @@ namespace global {
 	unsigned long last_loop_time = 0;
 
 	Mode mode;
-	uint8_t mode_mission;
+	uint8_t mode_mission = 0x00;
 }
 
 // センサデータ
@@ -201,6 +201,7 @@ void send_hk(){
 	// バス部のシーケンス状況送信
 	if((now - last) > 1000){
 		twelite.send_extend(id_station, 0x00, static_cast<uint8_t>(global::mode));
+		twelite.send_extend(id_station, 0x01, global::mode_mission);
 		last = now;
 	}
 }
