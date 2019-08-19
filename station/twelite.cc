@@ -132,7 +132,7 @@ void get_bus_temp(const TWE_Lite *twe){
 		val
 	};
 	twelite::bus_temp.push(twelite::latest_bus_temp);
-	std::cout << "bus temperature: " << val << std::endl;
+//	std::cout << "bus temperature: " << val << std::endl;
 }
 
 void get_gps(const TWE_Lite *twe){
