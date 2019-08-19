@@ -75,6 +75,8 @@ void save_loop(){
 	f_gyro.open("log/gyro.csv", std::ios::app);
 	f_bus_temp.open("log/bus_temp.csv", std::ios::app);
 	f_gps_time.open("log/gps_time.csv", std::ios::app);
+	f_gps_pos.open("log/gps_pos.csv", std::ios::app);
+	f_gps_alt.open("log/gps_alt.csv", std::ios::app);
 
 	while(run_flag){
 		for(size_t i=0;i<acc.size();i++){
