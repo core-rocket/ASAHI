@@ -21,7 +21,7 @@ struct Vec16_t {
 
 struct Value16 {
 	uint32_t time;
-	uint16_t val;
+	int16_t val;
 } PACKED;
 
 // 32bit float

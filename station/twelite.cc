@@ -16,8 +16,17 @@ namespace twelite {
 	TWE_Lite *twe = nullptr;
 	vec_t latest_acc = {};
 	vec_t latest_gyro= {};
+	double_t latest_bus_temp = {};
+	GPS_time latest_gps_time = {};
+	GPS_vec2 latest_gps_pos = {};
+	GPS_vec2 latest_gps_alt = {};
+
 	std::queue<vec_t> acc, gyro;
 	std::queue<uint8_t> cmd_queue;
+	std::queue<double_t> bus_temp;
+	std::queue<GPS_time> gps_time;
+	std::queue<GPS_vec2> gps_pos;
+	std::queue<GPS_vec2> gps_alt;
 }
 
 bool twelite::init(){
@@ -116,6 +125,11 @@ void get_bus_temp(const TWE_Lite *twe){
 	if(temp == nullptr)
 		return;
 
+	twelite::latest_bus_temp = {
+		static_cast<float>(temp->time) / 1000.0f,
+		static_cast<double>(temp->val)
+	};
+	twelite::bus_temp.push(twelite::latest_bus_temp);
 	std::cout << "bus temperature: " << temp->val << std::endl;
 }
 
@@ -132,6 +146,12 @@ void get_gps(const TWE_Lite *twe){
 					return;
 				std::cout << "UTC: "
 					<< time->time_int << "." << time->time_dec << std::endl;
+				twelite::latest_gps_time = {
+					time->time,
+					time->time_int,
+					time->time_dec
+				};
+				twelite::gps_time.push(twelite::latest_gps_time);
 			}
 			break;
 		case 0x09:
@@ -143,6 +163,12 @@ void get_gps(const TWE_Lite *twe){
 				std::cout
 					<< "lat = " << pos->x_int << "." << pos->x_dec
 					<< ", lng = " << pos->y_int << "." << pos->y_dec << std::endl;
+				twelite::latest_gps_pos = {
+					pos->time,
+					pos->x_int, pos->x_dec,
+					pos->y_int, pos->y_dec
+				};
+				twelite::gps_pos.push(twelite::latest_gps_pos);
 			}
 			break;
 		case 0x0a:
