@@ -39,3 +39,15 @@ get '/data/gyro' do
 	end
 	json j
 end
+
+get '/data/gps' do
+	time = `tail -n 1 ../log/gps_time.csv`.strip().split(",")
+	pos = `tail -n 1 ../log/gps_pos.csv`.strip().split(",")
+	j = {
+		time: time[0],
+		utc: time[1],
+		lat: pos[1],
+		lng: pos[2]
+	}
+	json j
+end
