@@ -11,11 +11,20 @@ namespace twelite {
 		float x, y, z;
 	};
 
+	struct double_t {
+		float time;
+		double val;
+	};
+
 	extern vec_t latest_acc;
 	extern vec_t latest_gyro;
 
 	extern std::queue<uint8_t> cmd_queue;
 	extern std::queue<vec_t> acc, gyro;
+	extern std::queue<double_t> bus_temp;
+	extern std::queue<GPS_time> gps_time;
+	extern std::queue<GPS_vec2> gps_pos;
+	extern std::queue<GPS_vec2> gps_alt;
 
 	bool init();
 	void loop();

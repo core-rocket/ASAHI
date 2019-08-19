@@ -69,10 +69,14 @@ void fwrite_vec(std::ofstream &file, const twelite::vec_t &v){
 
 void save_loop(){
 	using namespace twelite;
-	std::ofstream f_acc, f_gyro;
+	std::ofstream f_acc, f_gyro, f_bus_temp, f_gps_time, f_gps_pos, f_gps_alt;
 
 	f_acc.open("log/acc.csv", std::ios::app);
 	f_gyro.open("log/gyro.csv", std::ios::app);
+	f_bus_temp.open("log/bus_temp.csv", std::ios::app);
+	f_gps_time.open("log/gps_time.csv", std::ios::app);
+	f_gps_pos.open("log/gps_pos.csv", std::ios::app);
+	f_gps_alt.open("log/gps_alt.csv", std::ios::app);
 
 	while(run_flag){
 		for(size_t i=0;i<acc.size();i++){
@@ -84,6 +88,28 @@ void save_loop(){
 			const auto &v = gyro.front();
 			fwrite_vec(f_gyro, v);
 			gyro.pop();
+		}
+
+		for(size_t i=0;i<bus_temp.size();i++){
+			const auto &t = bus_temp.front();
+			f_bus_temp << t.time << "," << t.val << std::endl;
+			bus_temp.pop();
+		}
+
+		for(size_t i=0;i<gps_time.size();i++){
+			const auto &t = gps_time.front();
+			f_gps_time << t.time << "," << t.time_int << "." << t.time_dec << std::endl;
+			gps_time.pop();
+		}
+		for(size_t i=0;i<gps_pos.size();i++){
+			const auto &p = gps_pos.front();
+			f_gps_pos << p.time << "," << p.x_int << "." << p.x_dec << "," << p.y_int << "." << p.y_dec << std::endl;
+			gps_pos.pop();
+		}
+		for(size_t i=0;i<gps_alt.size();i++){
+			const auto &a = gps_alt.front();
+			f_gps_alt << a.time << "," << a.x_int << "." << a.x_dec << "," << a.y_int << "." << a.y_dec << std::endl;
+			gps_alt.pop();
 		}
 //		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
