@@ -27,7 +27,7 @@ MPU6050 mpu;
 // 無線機
 TWE_Lite twelite(4, 3, BRATE);
 
-enum class Mode {
+enum class Mode : uint8_t{
 	standby,
 	flight,
 };
@@ -45,6 +45,7 @@ namespace global {
 	unsigned long last_loop_time = 0;
 
 	Mode mode;
+	uint8_t mode_mission;
 }
 
 // センサデータ
@@ -62,6 +63,7 @@ namespace file {
 }
 
 // 関数
+void send_hk();
 void save_data();		// データ保存(ファイル, テレメトリ送信)
 template<typename T>
 void write_data(const uint8_t &type, const T &data);
@@ -142,11 +144,11 @@ void loop(){
 			Serial.println("invalid: ");
 			send_log("invalid");
 		}
-		Serial.print("UTC: ");
+/*		Serial.print("UTC: ");
 		Serial.print(d.time.int_part);
 		Serial.print(".");
 		Serial.print(d.time.dec_part);
-/*		Serial.print(" lat=");
+		Serial.print(" lat=");
 		Serial.print(d.latitude.int_part);
 		Serial.print(".");
 		Serial.print(d.latitude.dec_part);
@@ -169,7 +171,9 @@ void loop(){
 			Serial.println("simple");
 		}else{
 			Serial.println("extend");
-			if(twelite.response_id() == 0x02){
+			if(twelite.response_id() == 0x01){	// ミッション部シーケンス状況
+				global::mode_mission = twelite.recv_buf[0];
+			}else if(twelite.response_id() == 0x02){
 				global::mode = Mode::flight;
 				send_log("flight mode on");
 				MsTimer2::stop();
@@ -184,8 +188,21 @@ void loop(){
 		send_command(0x02);
 	}
 
+	// HKデータ送信
+	send_hk();
+
 	// データ保存
 	save_data();
+}
+
+void send_hk(){
+	static uint32_t last = 0;
+	uint32_t now = millis();
+	// バス部のシーケンス状況送信
+	if((now - last) > 1000){
+		twelite.send_extend(id_station, 0x00, static_cast<uint8_t>(global::mode));
+		last = now;
+	}
 }
 
 void save_data(){
