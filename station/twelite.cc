@@ -125,12 +125,14 @@ void get_bus_temp(const TWE_Lite *twe){
 	if(temp == nullptr)
 		return;
 
+	float time = static_cast<float>(temp->time) / 1000.0f;
+	double val= ((static_cast<double>(temp->val)+12412.0)/340.0);
 	twelite::latest_bus_temp = {
-		static_cast<float>(temp->time) / 1000.0f,
-		static_cast<double>(temp->val)
+		time,
+		val
 	};
 	twelite::bus_temp.push(twelite::latest_bus_temp);
-	std::cout << "bus temperature: " << temp->val << std::endl;
+//	std::cout << "bus temperature: " << val << std::endl;
 }
 
 void get_gps(const TWE_Lite *twe){
@@ -215,5 +217,20 @@ void parse_simple(const TWE_Lite *twe){
 }
 
 void parse_extend(const TWE_Lite *twe){
-	std::cout << "parse_extend " << std::endl;
+//	std::cout << "parse_extend("
+//		<< static_cast<uint32_t>(twe->response_id())
+//		<< ")"
+//		<< std::endl;
+	switch(twe->response_id()){
+		case 0x00:	// bus status
+			std::cout
+				<< "bus status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
+			break;
+		default:
+			std::cout
+				<< "unknown type data(extend format)" << std::endl
+				<< "\tresponse_id = 0x" << std::hex << static_cast<uint32_t>(twe->response_id()) << std::endl
+				<< "\tlength = " << std::dec << twe->get_length() << std::endl;
+			break;
+	}
 }
