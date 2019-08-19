@@ -111,6 +111,14 @@ void get_gyro(const TWE_Lite *twe){
 	twelite::gyro.push(twelite::latest_gyro);
 }
 
+void get_bus_temp(const TWE_Lite *twe){
+	auto *temp = twe->get_data<Value16>();
+	if(temp == nullptr)
+		return;
+
+	std::cout << "bus temperature: " << temp->val << std::endl;
+}
+
 void get_gps(const TWE_Lite *twe){
 	switch(twe->cmd_type()){
 		case 0x07:
@@ -162,6 +170,9 @@ void parse_simple(const TWE_Lite *twe){
 			break;
 		case 0x02:	// 3軸ジャイロ
 			get_gyro(twe);
+			break;
+		case 0x03:	// 水密部温度
+			get_bus_temp(twe);
 			break;
 		case 0x07:
 		case 0x08:
