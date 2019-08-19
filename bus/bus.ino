@@ -63,6 +63,8 @@ namespace file {
 
 // 関数
 void save_data();		// データ保存(ファイル, テレメトリ送信)
+template<typename T>
+void write_data(const uint8_t &type, const T &data);
 void send_motion(const Vec16_t &acc, const Vec16_t &gyro);		// モーションデータ送信
 void send_command(const uint8_t &cmd);
 void timer_handler();	// タイマ割り込みハンドラ
@@ -205,6 +207,7 @@ void save_data(){
 		//Serial.print(data.time.int_part);
 		t.time_int	= data.time.int_part;
 		t.time_dec	= data.time.dec_part;
+		write_data(0x08, t);
 		twelite.send_simple(id_station, 0x08, t);
 
 		// GPS緯度・経度
@@ -212,12 +215,14 @@ void save_data(){
 		v.x_dec	= data.latitude.dec_part;
 		v.y_int	= data.longitude.int_part;
 		v.y_dec	= data.longitude.dec_part;
+		write_data(0x09, v);
 		twelite.send_simple(id_station, 0x09, v);
 
 		v.x_int	= data.altitude.int_part;
 		v.x_dec	= data.altitude.dec_part;
 		v.y_int	= data.altitude_geo.int_part;
 		v.y_dec	= data.altitude_geo.dec_part;
+		write_data(0x0a, v);
 		twelite.send_simple(id_station, 0x0a, v);
 
 		gps_sended = true;
@@ -241,10 +246,12 @@ void save_data(){
 
 		if(file::data){
 	//		Serial.print("write  ");
-			file::data.write(0x01);
-			file::data.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
-			file::data.write(0x02);
-			file::data.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
+		//	file::data.write(0x01);
+		//	file::data.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
+		//	file::data.write(0x02);
+		//	file::data.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
+			write_data(0x01, acc);
+			write_data(0x02, gyro);
 	//		Serial.println("ok");
 		}
 
@@ -255,6 +262,12 @@ void save_data(){
 	}
 
 	file::data.flush();
+}
+
+template<typename T>
+void write_data(const uint8_t &type, const T &data){
+	file::data.write(type);
+	file::data.write(reinterpret_cast<const uint8_t*>(&data), sizeof(T));
 }
 
 void send_motion(const Vec16_t &acc, const Vec16_t &gyro){
