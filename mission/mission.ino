@@ -35,9 +35,9 @@
 
 // ピン設定
 namespace pin {
-	constexpr size_t flight = 2;		// フライトピン
-
-	constexpr size_t servo	= 9;
+	constexpr size_t flight		= 2;		// フライトピン
+	constexpr size_t nichrome	= 5;		// ニクロム線
+	constexpr size_t servo		= 9;		// サーボ
 
 	// LED
 	constexpr size_t led_arduino = 13;
@@ -91,7 +91,7 @@ void error();					// エラー(内蔵LED点滅)
 
 void setup(){
 	global::launch_time = millis();
-	global::mode = Mode::flight;
+	global::mode = Mode::standby;
 	Serial.begin(38400);
 
 	// LED初期設定
@@ -108,10 +108,14 @@ void setup(){
 	// フライトピン設定
 	pinMode(pin::flight, INPUT_PULLUP);
 
+	// ニクロム線
+	pinMode(pin::nichrome, OUTPUT);
+	digitalWrite(pin::nichrome, LOW);
+
 	// サーボ初期化
 	servo.attach(pin::servo);
 	servo.write(75);
-	delay(200);
+	delay(300);
 	servo.detach();
 
 	// TWE-Lite初期化
@@ -133,7 +137,9 @@ void loop(){
 	switch(global::mode){
 		case Mode::standby:
 			Serial.println("mode: standby");
+			delay(300);
 			if(twe.try_recv(100)){
+				Serial.println("recv");
 				if(twe.from_id() != id_bus)
 					break;
 				if(twe.is_extended()){
@@ -173,7 +179,7 @@ void loop(){
 
 				servo.attach(pin::servo);
 				servo.write(15);
-				delay(200);
+				delay(300);
 				servo.detach();
 
 				global::mode = Mode::leafing;
@@ -188,7 +194,7 @@ void loop(){
 			// リーフィング判定
 			// 指定高度以下になったら or タイムアウト
 			if(altitude <= ALTITUDE_LEAFING || time > TIMEOUT_LEAFING){
-				// digitalWrite(pin::led3, HIGH);	// リーフィング解除(のつもり)
+				digitalWrite(pin::nichrome, HIGH);
 				Serial.println("leafing!");
 			}
 			break;
@@ -267,6 +273,8 @@ void send_telemetry(){
 	Float32 data;
 	data.time = global::bmp_last_time;
 
+	//Serial.println("send telem");
+
 	// 気温(K)
 	data.value = global::temperature;
 	twe.send_simple(id_bus, 0x04, data);
@@ -281,13 +289,20 @@ void send_telemetry(){
 	data.value = global::altitude;
 	twe.send_simple(id_bus, 0x06, data);
 	delay(10);
+
+//	if(twe.try_recv(100)){
+//		Serial.println("recv");
+//		if(twe.is_response())
+//			Serial.println("response");
+//	}
 }
 
 void error(){
-	while(true){
-		digitalWrite(pin::led_arduino, HIGH);
-		delay(100);
-		digitalWrite(pin::led_arduino, LOW);
-		delay(100);
-	}
+	Serial.println("error");
+//	while(true){
+//		digitalWrite(pin::led_arduino, HIGH);
+//		delay(100);
+//		digitalWrite(pin::led_arduino, LOW);
+//		delay(100);
+//	}
 }
