@@ -1,3 +1,6 @@
+#include <avr/sleep.h>
+#include <avr/power.h>
+#include <avr/wdt.h>
 #include <MsTimer2.h>				// タイマ
 #include <SD.h>
 
@@ -79,6 +82,30 @@ void send_log(const char *str){
 	delay(100);
 }
 
+void sleep(){
+	wdt_reset();
+	cli();
+	MCUSR = 0;
+	WDTCSR |= 0b00011000;	// WDCE WDE set
+	WDTCSR |= 0b01000000 | 0b100000;//WDIE set  |WDIF set  scale 4 seconds
+	sei();
+
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+
+	cli();
+	sleep_enable();
+	sei();
+	sleep_cpu();
+	sleep_disable();
+
+	wdt_reset();
+	cli();
+	MCUSR = 0;
+	WDTCSR |= 0b00011000; //WDCE WDE set
+	WDTCSR =  0b00000000; //status clear
+	sei();
+}
+
 // 初期化関数．起動時, リセット時に実行される．
 void setup(){
 	// GPS初期化
@@ -123,6 +150,17 @@ void setup(){
 
 // メインループ
 void loop(){
+	if(global::mode == Mode::standby){
+		sleep();
+		Serial.begin(38400);
+//		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+//		sleep_enable();
+//		sleep_cpu();
+//		sleep_disable();
+//		global::mode = Mode::flight;
+		Serial.println("hoge");
+	}
+
 	const uint32_t now = millis();
 	global::loop_time = now - global::last_loop_time;
 	global::last_loop_time = now;
