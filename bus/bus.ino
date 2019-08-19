@@ -1,4 +1,6 @@
 #include <MsTimer2.h>				// タイマ
+#include <SD.h>
+
 #include "../TWE-Lite/TWE-Lite.hpp"
 #include "../telemetry.hpp"
 #define GPS_USE_HARDWARE_SERIAL
@@ -16,6 +18,8 @@
 #define GPS_OUTPUT_RATE		5
 #define GPS_OUTPUT_INTERVAL	(1000 / GPS_OUTPUT_RATE)
 
+#define SD_CS_PIN			10
+
 // センサ
 GPS gps(BRATE); // baud変更があるので他のSerialより先に初期化するべき
 MPU6050 mpu;
@@ -23,7 +27,7 @@ MPU6050 mpu;
 // 無線機
 TWE_Lite twelite(4, 3, BRATE);
 
-enum class Mode {
+enum class Mode : uint8_t{
 	standby,
 	flight,
 };
@@ -41,20 +45,31 @@ namespace global {
 	unsigned long last_loop_time = 0;
 
 	Mode mode;
+	uint8_t mode_mission;
 }
 
 // センサデータ
 namespace sensor_data {
-	volatile queue<MPU6050::data_t, 10> motion;
-	volatile queue<unsigned long, 10> motion_time;
+	volatile queue<MPU6050::data_t, 5> motion;
+	volatile queue<unsigned long, 5> motion_time;
 
 	bool gps_sended;
 	uint32_t gps_time;
 	GPS::data_t gps;
 }
 
+namespace file {
+	File data;
+}
+
 // 関数
-void send_telemetry();	// テレメトリ送信
+void send_hk();
+void save_data();		// データ保存(ファイル, テレメトリ送信)
+template<typename T>
+void write_data(const uint8_t &type, const T &data);
+void send_motion(const Vec16_t &acc, const Vec16_t &gyro);		// モーションデータ送信
+void send_temperature(const Value16 &temp);
+void send_command(const uint8_t &cmd);
 void timer_handler();	// タイマ割り込みハンドラ
 
 // 文字列でログを送る(あとで消す)
@@ -77,11 +92,20 @@ void setup(){
 	send_log("setup");
 
 	// センサ初期化
-	send_log("sensor init");
 	Wire.begin();
 	mpu.init();
 	MsTimer2::set(timer::init_dt, timer_handler);
-	send_log("finish");
+	send_log("sensor finish");
+
+	// SDカード初期化
+	send_log("SD init");
+	if(!SD.begin(SD_CS_PIN)){
+		send_log("SD failed");
+	}
+	file::data = SD.open("DATA.LOG", FILE_WRITE);
+	if(!file::data){
+		send_log("fopen failed");
+	}
 
 	global::mode = Mode::standby;
 
@@ -93,6 +117,8 @@ void setup(){
 
 	// タイマスタート
 	MsTimer2::start();
+
+	send_log("setup finish");
 }
 
 // メインループ
@@ -109,13 +135,16 @@ void loop(){
 
 	const uint32_t gps_time = millis();
 	if(gps.parse()){
-		sensor_data::gps_sended = false;
+		sensor_data::gps_sended = !gps.data.valid;	// 保存する時falseになる
 		sensor_data::gps_time = gps_time;
 		auto &d = gps.data;
+
 		Serial.print("GPS: ");
-		if(!d.valid)
-			Serial.print("invalid: ");
-		Serial.print("UTC: ");
+		if(!d.valid){
+			Serial.println("invalid: ");
+			send_log("invalid");
+		}
+/*		Serial.print("UTC: ");
 		Serial.print(d.time.int_part);
 		Serial.print(".");
 		Serial.print(d.time.dec_part);
@@ -127,21 +156,24 @@ void loop(){
 		Serial.print(d.longitude.int_part);
 		Serial.print(".");
 		Serial.println(d.longitude.dec_part);
+*/
 	}
 
 	// 受信
 	if(twelite.try_recv(10)){
 		Serial.print("recv: ");
-		send_log("recv");
+		//send_log("recv");
 
-		if(twelite.is_response())
-			Serial.println("response");
+//		if(twelite.is_response())
+//			Serial.println("response");
 
 		if(twelite.is_simple()){
 			Serial.println("simple");
 		}else{
 			Serial.println("extend");
-			if(twelite.response_id() == 0x02){
+			if(twelite.response_id() == 0x01){	// ミッション部シーケンス状況
+				global::mode_mission = twelite.recv_buf[0];
+			}else if(twelite.response_id() == 0x02){
 				global::mode = Mode::flight;
 				send_log("flight mode on");
 				MsTimer2::stop();
@@ -151,23 +183,37 @@ void loop(){
 		}
 	}
 
-	// ミッション部へのコマンド送信テスト
+	// ミッション部へのコマンド送信
 	if(global::mode == Mode::flight){
-//		twelite.send_extend(id_mission, 0x02, " ");
-		Serial.println("send flight mode command");
+		send_command(0x02);
 	}
 
-	// テレメトリ送信
-	send_telemetry();
-//	delay(100);
+	// HKデータ送信
+	send_hk();
+
+	// データ保存
+	save_data();
 }
 
-void send_telemetry(){
+void send_hk(){
+	static uint32_t last = 0;
+	uint32_t now = millis();
+	// バス部のシーケンス状況送信
+	if((now - last) > 1000){
+		twelite.send_extend(id_station, 0x00, static_cast<uint8_t>(global::mode));
+		last = now;
+	}
+}
+
+void save_data(){
 	using namespace sensor_data;
 
 	if(!gps_sended){
 		// GPSデータ送信処理
-		const auto& data = sensor_data::gps;
+		//Serial.println("send GPS");
+
+		const auto& data = ::gps.data;
+
 		GPS_time	t;
 		GPS_vec2	v;
 
@@ -175,8 +221,11 @@ void send_telemetry(){
 		t.time = v.time = gps_time;
 
 		// GPS測位時刻
+		//Serial.print("GPS time: ");
+		//Serial.print(data.time.int_part);
 		t.time_int	= data.time.int_part;
 		t.time_dec	= data.time.dec_part;
+		write_data(0x08, t);
 		twelite.send_simple(id_station, 0x08, t);
 
 		// GPS緯度・経度
@@ -184,42 +233,95 @@ void send_telemetry(){
 		v.x_dec	= data.latitude.dec_part;
 		v.y_int	= data.longitude.int_part;
 		v.y_dec	= data.longitude.dec_part;
+		write_data(0x09, v);
 		twelite.send_simple(id_station, 0x09, v);
 
 		v.x_int	= data.altitude.int_part;
 		v.x_dec	= data.altitude.dec_part;
 		v.y_int	= data.altitude_geo.int_part;
 		v.y_dec	= data.altitude_geo.dec_part;
+		write_data(0x0a, v);
 		twelite.send_simple(id_station, 0x0a, v);
 
 		gps_sended = true;
 	}
 
-//	Serial.println(motion.size());
-
 	for(size_t i=0;i<motion.size();i++){
 		const auto &m = motion.front();
-		const auto &t = motion_time.front();
+		const auto &time = motion_time.front();
 		const Vec16_t acc = {
-			t,
+			time,
 			m.acc[0],
 			m.acc[1],
 			m.acc[2],
 		};
 		const Vec16_t gyro= {
-			t,
+			time,
 			m.gyro[0],
 			m.gyro[1],
 			m.gyro[2],
 		};
+		const Value16 temp = {
+			time,
+			m.temperature,
+		};
 
-		twelite.send_simple(id_station, 0x01, acc);
-		twelite.send_simple(id_station, 0x02, gyro);
+		if(file::data){
+	//		Serial.print("write  ");
+		//	file::data.write(0x01);
+		//	file::data.write(reinterpret_cast<const uint8_t*>(&acc), sizeof(Vec16_t));
+		//	file::data.write(0x02);
+		//	file::data.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
+			write_data(0x01, acc);
+			write_data(0x02, gyro);
+			write_data(0x03, temp);
+	//		Serial.println("ok");
+		}
+
+		send_motion(acc, gyro);
+		send_temperature(temp);
 
 		motion.pop();
 		motion_time.pop();
 	}
 
+	file::data.flush();
+}
+
+template<typename T>
+void write_data(const uint8_t &type, const T &data){
+	file::data.write(type);
+	file::data.write(reinterpret_cast<const uint8_t*>(&data), sizeof(T));
+}
+
+void send_motion(const Vec16_t &acc, const Vec16_t &gyro){
+	static uint32_t last = 0;
+	//Serial.print(last);
+	//Serial.print(" ");
+	//Serial.println(acc.time);
+	if((acc.time - last) > static_cast<uint32_t>(100)){
+		//Serial.println("send");
+		twelite.send_simple(id_station, 0x01, acc);
+		twelite.send_simple(id_station, 0x02, gyro);
+		last = acc.time;
+	}
+}
+
+void send_temperature(const Value16 &temp){
+	static uint32_t last = 0;
+	if((temp.time-last) > static_cast<uint32_t>(500)){
+		twelite.send_simple(id_station, 0x03, temp);
+		last = temp.time;
+	}
+}
+
+void send_command(const uint8_t &cmd){
+	static uint32_t last = 0;
+	uint32_t now = millis();
+	if((now - last) > static_cast<uint32_t>(100)){
+		twelite.send_extend(id_mission, cmd, " ");
+	}
+	last = now;
 }
 
 void timer_handler(){
