@@ -76,6 +76,10 @@ function gps_onrefresh(chart){
 	document.getElementById("gps_info").innerHTML =
 		"<h4>internal time: " + data.time + ", UTC: " + data.utc + "</h4>" +
 		"<h4>lat: " + lat + ", lng: " + lng + "</h4>";
+
+	if(lat == 0.0 || lng == 0.0)
+		return;
+
 	dataset[0].data.push({ x: lat, y: lng });
 	chart.update();
 }

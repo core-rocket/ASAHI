@@ -125,12 +125,14 @@ void get_bus_temp(const TWE_Lite *twe){
 	if(temp == nullptr)
 		return;
 
+	float time = static_cast<float>(temp->time) / 1000.0f;
+	double val= ((static_cast<double>(temp->val)+12412.0)/340.0);
 	twelite::latest_bus_temp = {
-		static_cast<float>(temp->time) / 1000.0f,
-		static_cast<double>(temp->val)
+		time,
+		val
 	};
 	twelite::bus_temp.push(twelite::latest_bus_temp);
-	std::cout << "bus temperature: " << temp->val << std::endl;
+	std::cout << "bus temperature: " << val << std::endl;
 }
 
 void get_gps(const TWE_Lite *twe){
