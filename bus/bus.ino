@@ -66,6 +66,7 @@ void save_data();		// データ保存(ファイル, テレメトリ送信)
 template<typename T>
 void write_data(const uint8_t &type, const T &data);
 void send_motion(const Vec16_t &acc, const Vec16_t &gyro);		// モーションデータ送信
+void send_temperature(const Value16 &temp);
 void send_command(const uint8_t &cmd);
 void timer_handler();	// タイマ割り込みハンドラ
 
@@ -230,18 +231,22 @@ void save_data(){
 
 	for(size_t i=0;i<motion.size();i++){
 		const auto &m = motion.front();
-		const auto &t = motion_time.front();
+		const auto &time = motion_time.front();
 		const Vec16_t acc = {
-			t,
+			time,
 			m.acc[0],
 			m.acc[1],
 			m.acc[2],
 		};
 		const Vec16_t gyro= {
-			t,
+			time,
 			m.gyro[0],
 			m.gyro[1],
 			m.gyro[2],
+		};
+		const Value16 temp = {
+			time,
+			m.temperature,
 		};
 
 		if(file::data){
@@ -252,10 +257,12 @@ void save_data(){
 		//	file::data.write(reinterpret_cast<const uint8_t*>(&gyro), sizeof(Vec16_t));
 			write_data(0x01, acc);
 			write_data(0x02, gyro);
+			write_data(0x03, temp);
 	//		Serial.println("ok");
 		}
 
 		send_motion(acc, gyro);
+		send_temperature(temp);
 
 		motion.pop();
 		motion_time.pop();
@@ -280,6 +287,14 @@ void send_motion(const Vec16_t &acc, const Vec16_t &gyro){
 		twelite.send_simple(id_station, 0x01, acc);
 		twelite.send_simple(id_station, 0x02, gyro);
 		last = acc.time;
+	}
+}
+
+void send_temperature(const Value16 &temp){
+	static uint32_t last = 0;
+	if((temp.time-last) > static_cast<uint32_t>(500)){
+		twelite.send_simple(id_station, 0x03, temp);
+		last = temp.time;
 	}
 }
 
