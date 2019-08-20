@@ -40,6 +40,7 @@ void twelite::loop(){
 		if(!cmd_queue.empty()){
 			std::cout << "sending command ... \t";
 			twe->send_extend(id_bus, cmd_queue.front(), "A");
+			twe->send_extend(id_mission, cmd_queue.front(), "A");
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			cmd_queue.pop();
 		}
