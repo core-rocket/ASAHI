@@ -275,7 +275,7 @@ void send_hk(){
 	static uint32_t last = 0;
 	uint32_t now = millis();
 	// ミッション部のシーケンス状況送信
-	if((now - last) > 1000){
+	if((now - last) > 100){
 		twe.send_extend(id_station, 0x01, static_cast<uint8_t>(global::mode));
 		last = now;
 	}
