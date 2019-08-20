@@ -1,7 +1,7 @@
 //#include <MsTimer2.h>					// タイマー
 #include <Wire.h>						// i2c
 #include <Adafruit_BMP280.h>			// BMP280ライブラリ
-#include <Servo.h>						// サーボ
+//#include <Servo.h>						// サーボ
 
 #include "../TWE-Lite/TWE-Lite.hpp"		// TWE-Lite
 #include "../telemetry.hpp"
@@ -78,7 +78,7 @@ namespace sensor {
 	Adafruit_BMP280			bmp;	// BMP280
 }
 
-Servo		servo;
+//Servo		servo;
 TWE_Lite	twe(4, 3, 38400);
 
 size_t servo_num = 0;
@@ -116,9 +116,9 @@ void setup(){
 	digitalWrite(pin::nichrome, LOW);
 
 	// サーボ初期化
-	servo.attach(pin::servo);
-	servo.write(75);
-	delay(300);
+//	servo.attach(pin::servo);
+//	servo.write(75);
+//	delay(300);
 //	servo.detach();
 
 	// TWE-Lite初期化
@@ -146,7 +146,7 @@ void loop(){
 	const auto& last_altitude = global::last_altitude;
 	const auto& altitude = global::altitude;
 
-	servo.write(servo_num);
+//	servo.write(servo_num);
 
 	switch(global::mode){
 		case Mode::standby:
@@ -191,18 +191,21 @@ void loop(){
 			if(global::descent_count >= 4 || time > TIMEOUT_PARACHUTE){
 				Serial.println("do parachute!!!!");
 
+				digitalWrite(pin::nichrome, HIGH);
+
 				//servo.attach(pin::servo);
 			//	servo.write(15);
 			//	delay(300);
 				//servo.detach();
 
-				servo_num = 15;
+			//	servo_num = 15;
 
-				global::mode = Mode::leafing;
+		//		global::mode = Mode::leafing;
 				Serial.println("mode parachute -> leafing");
 			}
 
 			break;
+/*
 		case Mode::leafing:
 			// リーフィング判定とリーフィング
 			Serial.println("mode: leafing");
@@ -214,6 +217,7 @@ void loop(){
 				Serial.println("leafing!");
 			}
 			break;
+*/
 	}
 
 	timerrrrrrrrrr();
