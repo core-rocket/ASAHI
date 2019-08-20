@@ -201,6 +201,7 @@ void loop(){
 			break;
 	}
 
+	send_hk();
 	send_telemetry();
 
 	Serial.print("launch=");

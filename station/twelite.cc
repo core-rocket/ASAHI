@@ -290,6 +290,10 @@ void parse_extend(const TWE_Lite *twe){
 			std::cout
 				<< "bus status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
 			break;
+		case 0x01:
+			std::cout
+				<< "mission status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
+			break;
 		default:
 			std::cout
 				<< "unknown type data(extend format)" << std::endl
