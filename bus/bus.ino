@@ -45,7 +45,6 @@ namespace global {
 	unsigned long last_loop_time = 0;
 
 	Mode mode;
-	uint8_t mode_mission;
 }
 
 // センサデータ
@@ -171,9 +170,7 @@ void loop(){
 			Serial.println("simple");
 		}else{
 			Serial.println("extend");
-			if(twelite.response_id() == 0x01){	// ミッション部シーケンス状況
-				global::mode_mission = twelite.recv_buf[0];
-			}else if(twelite.response_id() == 0x02){
+			if(twelite.response_id() == 0x02){
 				global::mode = Mode::flight;
 				send_log("flight mode on");
 				MsTimer2::stop();
@@ -181,11 +178,6 @@ void loop(){
 				MsTimer2::start();
 			}
 		}
-	}
-
-	// ミッション部へのコマンド送信
-	if(global::mode == Mode::flight){
-		send_command(0x02);
 	}
 
 	// HKデータ送信
@@ -315,6 +307,7 @@ void send_temperature(const Value16 &temp){
 	}
 }
 
+/*
 void send_command(const uint8_t &cmd){
 	static uint32_t last = 0;
 	uint32_t now = millis();
@@ -323,6 +316,7 @@ void send_command(const uint8_t &cmd){
 	}
 	last = now;
 }
+*/
 
 void timer_handler(){
 	using namespace sensor_data;
