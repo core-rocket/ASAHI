@@ -70,6 +70,7 @@ void fwrite_vec(std::ofstream &file, const twelite::vec_t &v){
 void save_loop(){
 	using namespace twelite;
 	std::ofstream f_acc, f_gyro, f_bus_temp, f_gps_time, f_gps_pos, f_gps_alt;
+	std::ofstream f_mission_temp, f_pressure, f_altitude;
 
 	f_acc.open("log/acc.csv", std::ios::app);
 	f_gyro.open("log/gyro.csv", std::ios::app);
@@ -77,6 +78,9 @@ void save_loop(){
 	f_gps_time.open("log/gps_time.csv", std::ios::app);
 	f_gps_pos.open("log/gps_pos.csv", std::ios::app);
 	f_gps_alt.open("log/gps_alt.csv", std::ios::app);
+	f_mission_temp.open("log/mission_temp.csv", std::ios::app);
+	f_pressure.open("log/pressure.csv", std::ios::app);
+	f_altitude.open("log/altitude.csv", std::ios::app);
 
 	while(run_flag){
 		for(size_t i=0;i<acc.size();i++){
@@ -110,6 +114,23 @@ void save_loop(){
 			const auto &a = gps_alt.front();
 			f_gps_alt << a.time << "," << a.x_int << "." << a.x_dec << "," << a.y_int << "." << a.y_dec << std::endl;
 			gps_alt.pop();
+		}
+
+		// mission
+		for(size_t i=0;i<mission_temp.size();i++){
+			const auto &t = mission_temp.front();
+			f_mission_temp << t.time << "," << t.val << std::endl;
+			mission_temp.pop();
+		}
+		for(size_t i=0;i<pressure.size();i++){
+			const auto &p = pressure.front();
+			f_pressure << p.time << "," << p.val << std::endl;
+			pressure.pop();
+		}
+		for(size_t i=0;i<altitude.size();i++){
+			const auto &a = altitude.front();
+			f_altitude << a.time << "," << a.val << std::endl;
+			altitude.pop();
 		}
 //		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}

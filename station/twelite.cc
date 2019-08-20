@@ -155,7 +155,7 @@ void get_mission_temp(const TWE_Lite *twe){
 	};
 	twelite::mission_temp.push(twelite::latest_mission_temp);
 
-	std::cout << "mission temp = " << val << std::endl;
+//	std::cout << "mission temp = " << val << std::endl;
 }
 
 void get_pressure(const TWE_Lite *twe){
@@ -171,7 +171,7 @@ void get_pressure(const TWE_Lite *twe){
 	};
 	twelite::pressure.push(twelite::latest_pressure);
 
-	std::cout << "mission pressure = " << val << std::endl;
+//	std::cout << "mission pressure = " << val << std::endl;
 }
 
 void get_altitude(const TWE_Lite *twe){
@@ -187,7 +187,7 @@ void get_altitude(const TWE_Lite *twe){
 	};
 	twelite::altitude.push(twelite::latest_altitude);
 
-	std::cout << "mission altitude = " << val << std::endl;
+//	std::cout << "mission altitude = " << val << std::endl;
 }
 
 void get_gps(const TWE_Lite *twe){
