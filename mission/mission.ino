@@ -1,4 +1,4 @@
-#include <MsTimer2.h>					// タイマー
+//#include <MsTimer2.h>					// タイマー
 #include <Wire.h>						// i2c
 #include <Adafruit_BMP280.h>			// BMP280ライブラリ
 #include <Servo.h>						// サーボ
@@ -7,7 +7,7 @@
 #include "../telemetry.hpp"
 
 // 本番時はこの下の行をコメントアウトすること！！！！
-#define BBM
+//#define BBM
 
 #ifdef BBM		// BBM試験用パラメータ
 
@@ -81,6 +81,8 @@ namespace sensor {
 Servo		servo;
 TWE_Lite	twe(4, 3, 38400);
 
+size_t servo_num = 0;
+
 // 関数
 void init_led(const size_t pin);// LED初期設定
 void flightpin_handler();		// フライトピンの割り込みハンドラ(離床判定)
@@ -104,7 +106,7 @@ void setup(){
 		error();
 
 	// タイマ割り込み設定
-	MsTimer2::set(1000 / BMP280_SAMPLING_RATE, timer_handler);
+//	MsTimer2::set(1000 / BMP280_SAMPLING_RATE, timer_handler);
 
 	// フライトピン設定
 	pinMode(pin::flight, INPUT_PULLUP);
@@ -117,14 +119,23 @@ void setup(){
 	servo.attach(pin::servo);
 	servo.write(75);
 	delay(300);
-	servo.detach();
+//	servo.detach();
 
 	// TWE-Lite初期化
 	twe.init();
 
 	// 割り込み有効化
-	MsTimer2::start();
+//	MsTimer2::start();
 	attachInterrupt(digitalPinToInterrupt(pin::flight), flightpin_handler, CHANGE);
+}
+
+void timerrrrrrrrrr(){
+	static uint32_t last = 0;
+	const uint32_t now = millis();
+	if((now - last) > (1000 / BMP280_SAMPLING_RATE)){
+		timer_handler();
+		last = now;
+	}
 }
 
 void loop(){
@@ -134,6 +145,8 @@ void loop(){
 	update_altitude();							// 高度を更新する
 	const auto& last_altitude = global::last_altitude;
 	const auto& altitude = global::altitude;
+
+	servo.write(servo_num);
 
 	switch(global::mode){
 		case Mode::standby:
@@ -178,10 +191,12 @@ void loop(){
 			if(global::descent_count >= 4 || time > TIMEOUT_PARACHUTE){
 				Serial.println("do parachute!!!!");
 
-				servo.attach(pin::servo);
-				servo.write(15);
-				delay(300);
-				servo.detach();
+				//servo.attach(pin::servo);
+			//	servo.write(15);
+			//	delay(300);
+				//servo.detach();
+
+				servo_num = 15;
 
 				global::mode = Mode::leafing;
 				Serial.println("mode parachute -> leafing");
@@ -200,6 +215,8 @@ void loop(){
 			}
 			break;
 	}
+
+	timerrrrrrrrrr();
 
 	send_hk();
 	send_telemetry();
@@ -238,10 +255,10 @@ void timer_handler(){
 	global::bmp_last_time = millis();
 
 	// i2cを使うので一時的に割り込み許可
-	interrupts();
+//	interrupts();
 	global::temp_buf[global::bmp_count]		= bmp.readTemperature();	// 気温(℃ )
 	global::press_buf[global::bmp_count]	= bmp.readPressure();		// 気圧(Pa)
-	noInterrupts();
+//	noInterrupts();
 	global::bmp_count++;
 	if(global::bmp_count == BMP280_BUF_SIZE)
 		global::bmp_count = 0;

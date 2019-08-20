@@ -6,8 +6,9 @@ Servo servo;
 
 void setup(){
 	servo.attach(PIN_SERVO);
+	delay(5000);
 	servo.write(0);
-	delay(1000);
+	delay(5000);
 	servo.write(75);
 }
 
