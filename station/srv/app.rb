@@ -16,11 +16,12 @@ def vec2json(v)
 	return j
 end
 
-def temp2json(t)
+def temp2json(bus, mission)
 	j = {
-		time: t[0],
-		bus: t[1],
-		mission: 0.0
+		bus_time: bus[0],
+		bus_temp: bus[1],
+		mission_time: mission[0],
+		mission_temp: mission[1],
 	}
 	return j
 end
@@ -50,13 +51,19 @@ get '/data/gyro' do
 end
 
 get '/data/temperature' do
-	log = `tail -n 10 ../log/bus_temp.csv`.split("\n")
+	log_bus = `tail -n 10 ../log/bus_temp.csv`.split("\n")
+	log_mission = `tail -n 10 ../log/mission_temp.csv`.split("\n")
 	j = {}
-	i = 0
-	for data in log do
-		bus = data.split(",")
-		j.store(i, temp2json(bus))
-		i = i + 1
+	for i in 0..9 do
+		bus = []
+		mission = []
+		if log_bus[i] != nil
+			bus = log_bus[i].split(",")
+		end
+		if log_mission[i] != nil
+			mission = log_mission[i].split(",")
+		end
+		j.store(i, temp2json(bus, mission))
 	end
 	json j
 end
