@@ -108,6 +108,8 @@ function press_onrefresh(chart){
 			dataset[0].data.push({ x: client_time, y: last_press });
 		}
 	}
+	document.getElementById("pressure").innerHTML = "<h4>time: " + last_press_time + "</h4>" +
+													"<h4>pressure: " + last_press + "</h4>";
 }
 
 function alt_onrefresh(chart){
@@ -189,7 +191,7 @@ var acc_chart = new Chart(acc_ctx, {
 				type: 'realtime',
 				realtime: {
 					duration: 10000,
-					refresh: 10,
+					refresh: 100,
 					delay: 0,
 					onRefresh: acc_onrefresh
 				}
@@ -230,7 +232,7 @@ var gyro_chart = new Chart(gyro_ctx, {
 				type: 'realtime',
 				realtime: {
 					duration: 10000,
-					refresh: 10,
+					refresh: 100,
 					delay: 0,
 					onRefresh: gyro_onrefresh
 				}
@@ -266,7 +268,7 @@ var temp_chart = new Chart(temp_ctx, {
 				type: 'realtime',
 				realtime: {
 					duration: 10000,
-					refresh: 100,
+					refresh: 500,
 					delay: 0,
 					onRefresh: temp_onrefresh,
 				}
@@ -297,7 +299,7 @@ var press_chart = new Chart(press_ctx, {
 				type: 'realtime',
 				realtime: {
 					duration: 10000,
-					refresh: 100,
+					refresh: 500,
 					delay: 0,
 					onRefresh: press_onrefresh,
 				}
@@ -375,4 +377,4 @@ var gps_chart = new Chart(gps_ctx, {
 	},
 });
 
-setInterval("gps_onrefresh(gps_chart)", 100);
+setInterval("gps_onrefresh(gps_chart)", 1000);
