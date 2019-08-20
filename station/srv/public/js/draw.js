@@ -3,6 +3,7 @@ var acc_ctx = document.getElementById('acc-chart').getContext('2d');
 var gyro_ctx= document.getElementById('gyro-chart').getContext('2d');
 var temp_ctx= document.getElementById('temperature-chart').getContext('2d');
 var press_ctx=document.getElementById('pressure-chart').getContext('2d');
+var alt_ctx = document.getElementById('altitude-chart').getContext('2d');
 var gps_ctx = document.getElementById('gps-chart').getContext('2d');
 
 var last_acc_time = 0.0;
@@ -10,6 +11,7 @@ var last_gyro_time= 0.0;
 var last_bus_temp_time= 0.0;
 var last_mission_temp_time = 0.0;
 var last_press_time = 0.0;
+var last_alt_time = 0.0;
 var last_gps_time = 0.0;
 
 var last_bus_temp = 0.0;
@@ -106,6 +108,27 @@ function press_onrefresh(chart){
 			dataset[0].data.push({ x: client_time, y: last_press });
 		}
 	}
+}
+
+function alt_onrefresh(chart){
+	request.open("GET", "/data/altitude", false);
+	request.send(null);
+	if(request.readyState != 4 || request.status != 200){
+		last_alt_time = 0.0;
+		return;
+	}
+	var data = JSON.parse(request.responseText);
+	var dataset = chart.config.data.datasets;
+	for(var i=0;i<Object.keys(data).length;i++){
+		const client_time = Date.now();
+		if(data[i].time > last_alt_time){
+			last_alt_time = data[i].time;
+			last_alt = data[i].altitude;
+			dataset[0].data.push({ x: client_time, y: last_alt });
+		}
+	}
+	document.getElementById("altitude").innerHTML = "<h4>time: " + last_alt_time + "</h4>" +
+													"<h4>altitude: " + last_alt + "</h4>";
 }
 
 function gps_onrefresh(chart){
@@ -283,6 +306,37 @@ var press_chart = new Chart(press_ctx, {
 				ticks: {
 					min: 900,
 					max: 1500,
+				}
+			}]
+		}
+	}
+});
+
+var alt_chart = new Chart(alt_ctx, {
+	type: 'line',
+	data: {
+		datasets: [{
+			label: "altitude",
+			borderColor: 'rgba(0, 200, 0)',
+			fill: false,
+			data: []
+		}]
+	},
+	options: {
+		scales: {
+			xAxes: [{
+				type: 'realtime',
+				realtime: {
+					duration: 10000,
+					refresh: 100,
+					delay: 0,
+					onRefresh: alt_onrefresh,
+				}
+			}],
+			yAxes: [{
+				ticks: {
+					min: 0,
+					max: 1000
 				}
 			}]
 		}

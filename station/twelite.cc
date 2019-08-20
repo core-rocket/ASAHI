@@ -179,7 +179,7 @@ void get_altitude(const TWE_Lite *twe){
 	if(alt == nullptr)
 		return;
 
-	float time = static_cast<float>(alt->time);
+	float time = static_cast<float>(alt->time) / 1000.0f;
 	double val = static_cast<double>(alt->value);
 	twelite::latest_altitude = {
 		time,
