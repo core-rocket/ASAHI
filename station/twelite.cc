@@ -17,6 +17,9 @@ namespace twelite {
 	vec_t latest_acc = {};
 	vec_t latest_gyro= {};
 	double_t latest_bus_temp = {};
+	double_t latest_mission_temp = {};
+	double_t latest_pressure = {};
+	double_t latest_altitude = {};
 	GPS_time latest_gps_time = {};
 	GPS_vec2 latest_gps_pos = {};
 	GPS_vec2 latest_gps_alt = {};
@@ -24,6 +27,9 @@ namespace twelite {
 	std::queue<vec_t> acc, gyro;
 	std::queue<uint8_t> cmd_queue;
 	std::queue<double_t> bus_temp;
+	std::queue<double_t> mission_temp;
+	std::queue<double_t> pressure;
+	std::queue<double_t> altitude;
 	std::queue<GPS_time> gps_time;
 	std::queue<GPS_vec2> gps_pos;
 	std::queue<GPS_vec2> gps_alt;
@@ -136,6 +142,54 @@ void get_bus_temp(const TWE_Lite *twe){
 //	std::cout << "bus temperature: " << val << std::endl;
 }
 
+void get_mission_temp(const TWE_Lite *twe){
+	auto *temp = twe->get_data<Float32>();
+	if(temp == nullptr)
+		return;
+
+	float time = static_cast<float>(temp->time) / 1000.0f;
+	double val = static_cast<double>(temp->value);
+	twelite::latest_mission_temp = {
+		time,
+		val,
+	};
+	twelite::mission_temp.push(twelite::latest_mission_temp);
+
+	std::cout << "mission temp = " << val << std::endl;
+}
+
+void get_pressure(const TWE_Lite *twe){
+	auto *press = twe->get_data<Float32>();
+	if(press == nullptr)
+		return;
+
+	float time = static_cast<float>(press->time) / 1000.0f;
+	double val = static_cast<double>(press->value);
+	twelite::latest_pressure = {
+		time,
+		val,
+	};
+	twelite::pressure.push(twelite::latest_pressure);
+
+	std::cout << "mission pressure = " << val << std::endl;
+}
+
+void get_altitude(const TWE_Lite *twe){
+	auto *alt = twe->get_data<Float32>();
+	if(alt == nullptr)
+		return;
+
+	float time = static_cast<float>(alt->time);
+	double val = static_cast<double>(alt->value);
+	twelite::latest_altitude = {
+		time,
+		val,
+	};
+	twelite::altitude.push(twelite::latest_altitude);
+
+	std::cout << "mission altitude = " << val << std::endl;
+}
+
 void get_gps(const TWE_Lite *twe){
 	switch(twe->cmd_type()){
 		case 0x07:
@@ -202,6 +256,15 @@ void parse_simple(const TWE_Lite *twe){
 			break;
 		case 0x03:	// 水密部温度
 			get_bus_temp(twe);
+			break;
+		case 0x04:	// 気温
+			get_mission_temp(twe);
+			break;
+		case 0x05:	// 気圧
+			get_pressure(twe);
+			break;
+		case 0x06:	// 高度
+			get_altitude(twe);
 			break;
 		case 0x07:
 		case 0x08:
