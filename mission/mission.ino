@@ -86,6 +86,7 @@ void init_led(const size_t pin);// LED初期設定
 void flightpin_handler();		// フライトピンの割り込みハンドラ(離床判定)
 void timer_handler();			// タイマ割り込み関数
 void update_altitude();			// 高度を更新する
+void send_hk();					// HKデータ送信
 void send_telemetry();			// テレメトリ送信(toバス部)
 void error();					// エラー(内蔵LED点滅)
 
@@ -140,7 +141,7 @@ void loop(){
 			delay(300);
 			if(twe.try_recv(100)){
 				Serial.println("recv");
-				if(twe.from_id() != id_bus)
+				if(twe.from_id() != id_station)
 					break;
 				if(twe.is_extended()){
 					// コマンド
@@ -269,11 +270,19 @@ void update_altitude(){
 	global::altitude = ((pow(p_0/p, 1/5.257) - 1)*t) / 0.0065;
 }
 
+void send_hk(){
+	static uint32_t last = 0;
+	uint32_t now = millis();
+	// ミッション部のシーケンス状況送信
+	if((now - last) > 1000){
+		twe.send_extend(id_station, 0x01, static_cast<uint8_t>(global::mode));
+		last = now;
+	}
+}
+
 void send_telemetry(){
 	Float32 data;
 	data.time = global::bmp_last_time;
-
-	//Serial.println("send telem");
 
 	// 気温(K)
 	data.value = global::temperature;
@@ -289,12 +298,6 @@ void send_telemetry(){
 	data.value = global::altitude;
 	twe.send_simple(id_station, 0x06, data);
 	delay(10);
-
-//	if(twe.try_recv(100)){
-//		Serial.println("recv");
-//		if(twe.is_response())
-//			Serial.println("response");
-//	}
 }
 
 void error(){
