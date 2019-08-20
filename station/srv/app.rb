@@ -68,6 +68,18 @@ get '/data/temperature' do
 	json j
 end
 
+get '/data/pressure' do
+	log = `tail -n 10 ../log/pressure.csv`.split("\n")
+	j = {}
+	i = 0
+	for data in log do
+		press = data.split(",")
+		j.store(i, { time: press[0], press: press[1] })
+		i = i + 1
+	end
+	json j
+end
+
 get '/data/gps' do
 	time = `tail -n 1 ../log/gps_time.csv`.strip().split(",")
 	pos = `tail -n 1 ../log/gps_pos.csv`.strip().split(",")

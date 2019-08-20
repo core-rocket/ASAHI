@@ -2,12 +2,14 @@ var request = new XMLHttpRequest();
 var acc_ctx = document.getElementById('acc-chart').getContext('2d');
 var gyro_ctx= document.getElementById('gyro-chart').getContext('2d');
 var temp_ctx= document.getElementById('temperature-chart').getContext('2d');
+var press_ctx=document.getElementById('pressure-chart').getContext('2d');
 var gps_ctx = document.getElementById('gps-chart').getContext('2d');
 
 var last_acc_time = 0.0;
 var last_gyro_time= 0.0;
 var last_bus_temp_time= 0.0;
 var last_mission_temp_time = 0.0;
+var last_press_time = 0.0;
 var last_gps_time = 0.0;
 
 var last_bus_temp = 0.0;
@@ -84,6 +86,26 @@ function temp_onrefresh(chart){
 	document.getElementById("temperature").innerHTML = "<h4>time: " + last_bus_temp_time + "</h4>" +
 														"<h4>bus: " + last_bus_temp + "</h4>" +
 														"<h4>mission: " + last_mission_temp + "</h4>";
+}
+
+function press_onrefresh(chart){
+	request.open("GET", "/data/pressure", false);
+	request.send(null);
+	if(request.readyState != 4 || request.status != 200){
+		last_press_time = 0.0;
+		return;
+	}
+	var data = JSON.parse(request.responseText);
+
+	var dataset = chart.config.data.datasets;
+	for(var i =0;i<Object.keys(data).length;i++){
+		const client_time = Date.now();
+		if(data[i].time > last_press_time){
+			last_press_time = data[i].time;
+			last_press = data[i].press;
+			dataset[0].data.push({ x: client_time, y: last_press });
+		}
+	}
 }
 
 function gps_onrefresh(chart){
@@ -234,6 +256,37 @@ var temp_chart = new Chart(temp_ctx, {
 			}]
 		}
 	},
+});
+
+var press_chart = new Chart(press_ctx, {
+	type: 'line',
+	data: {
+		datasets: [{
+			label: "presure",
+			borderColor: 'rgba(200, 0, 0)',
+			fill: false,
+			data: []
+		}]
+	},
+	options: {
+		scales: {
+			xAxes: [{
+				type: 'realtime',
+				realtime: {
+					duration: 10000,
+					refresh: 100,
+					delay: 0,
+					onRefresh: press_onrefresh,
+				}
+			}],
+			yAxes: [{
+				ticks: {
+					min: 900,
+					max: 1500,
+				}
+			}]
+		}
+	}
 });
 
 var gps_chart = new Chart(gps_ctx, {
