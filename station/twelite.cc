@@ -291,6 +291,10 @@ void parse_extend(const TWE_Lite *twe){
 //		<< static_cast<uint32_t>(twe->response_id())
 //		<< ")"
 //		<< std::endl;
+
+	s += "LQI=";
+	s += std::to_string(static_cast<uint32_t>(twe->LQI()));
+	s += ", ";
 	switch(twe->response_id()){
 		case 0x00:	// bus status
 			s += "status(bus) = ";
