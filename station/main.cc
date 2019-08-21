@@ -78,9 +78,11 @@ void fwrite_vec(std::ofstream &file, const twelite::vec_t &v){
 
 void save_loop(){
 	using namespace twelite;
+	std::ofstream f_log;
 	std::ofstream f_acc, f_gyro, f_bus_temp, f_gps_time, f_gps_pos, f_gps_alt;
 	std::ofstream f_mission_temp, f_pressure, f_altitude;
 
+	f_log.open("log/log.txt", std::ios::app);
 	f_acc.open("log/acc.csv", std::ios::app);
 	f_gyro.open("log/gyro.csv", std::ios::app);
 	f_bus_temp.open("log/bus_temp.csv", std::ios::app);
@@ -92,6 +94,12 @@ void save_loop(){
 	f_altitude.open("log/altitude.csv", std::ios::app);
 
 	while(run_flag){
+		for(size_t i=0;i<log.size();i++){
+			const auto &s = log.front();
+			f_log << s << std::endl;
+			log.pop();
+		}
+
 		for(size_t i=0;i<acc.size();i++){
 			const auto &v = acc.front();
 			fwrite_vec(f_acc, v);

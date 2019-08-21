@@ -26,6 +26,7 @@ namespace twelite {
 
 	std::queue<vec_t> acc, gyro;
 	std::queue<uint8_t> cmd_queue;
+	std::queue<std::string> log;
 	std::queue<double_t> bus_temp;
 	std::queue<double_t> mission_temp;
 	std::queue<double_t> pressure;
@@ -76,11 +77,15 @@ void twelite::loop(){
 }
 
 void get_string(const TWE_Lite *twe){
+	std::string s = "str: ";
 	std::cout << "string: \"";
 	for(size_t i=0;i<twe->get_length();i++){
 		std::cout << static_cast<char>(twe->recv_buf[i]);
+		s += twe->recv_buf[i];
 	}
 	std::cout << "\"" << std::endl;
+
+	twelite::log.push(s);
 }
 
 void get_acc(const TWE_Lite *twe){
@@ -281,24 +286,35 @@ void parse_simple(const TWE_Lite *twe){
 }
 
 void parse_extend(const TWE_Lite *twe){
+	std::string s = "ex: ";
 //	std::cout << "parse_extend("
 //		<< static_cast<uint32_t>(twe->response_id())
 //		<< ")"
 //		<< std::endl;
 	switch(twe->response_id()){
 		case 0x00:	// bus status
+			s += "status(bus) = ";
+			s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
 			std::cout
 				<< "bus status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
 			break;
 		case 0x01:
+			s += "status(mission) = ";
+			s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
 			std::cout
 				<< "mission status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
 			break;
 		default:
+			s += "unknown: response_id=";
+			s += std::to_string(static_cast<uint32_t>(twe->response_id()));
+			s += ", length=";
+			s += std::to_string(twe->get_length());
 			std::cout
 				<< "unknown type data(extend format)" << std::endl
 				<< "\tresponse_id = 0x" << std::hex << static_cast<uint32_t>(twe->response_id()) << std::endl
 				<< "\tlength = " << std::dec << twe->get_length() << std::endl;
 			break;
 	}
+
+	twelite::log.push(s);
 }
