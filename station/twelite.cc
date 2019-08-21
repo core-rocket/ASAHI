@@ -304,7 +304,14 @@ void parse_extend(const TWE_Lite *twe){
 			break;
 		case 0x01:
 			s += "status(mission) = ";
-			s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
+			//s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
+			switch(twe->recv_buf[0]){
+			case 0x00: s += "standby"; break;
+			case 0x01: s += "flight"; break;
+			case 0x02: s += "rising"; break;
+			case 0x03: s += "parachute"; break;
+			case 0x04: s += "leafing"; break;
+			}
 		//	std::cout
 		//		<< "mission status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
 			break;
