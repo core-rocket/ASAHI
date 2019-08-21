@@ -150,6 +150,11 @@ void loop(){
 	const auto& last_altitude = global::last_altitude;
 	const auto& altitude = global::altitude;
 
+//	if(digitalRead(pin::flight) == HIGH)
+//		Serial.println("high");
+//	else
+//		Serial.println("low");
+
 	switch(global::mode){
 		case Mode::standby:
 			//send_log("mission: standby");
@@ -185,6 +190,20 @@ void loop(){
 			break;
 		case Mode::flight:
 			Serial.println("mode: flight");
+			{
+				size_t n = 0;
+				for(size_t i=0;i<10;i++){
+					if(digitalRead(pin::flight) == LOW)
+						n++;
+					delay(1);
+				}
+				if(n == 10){
+					// たまに割り込みがうまくいかないことがあるので冗長のため
+					// ↑ 接触不良やんけ！！！！！！！！！！！
+					global::launch_time = millis();
+					global::mode = Mode::rising;
+				}
+			}
 			break;
 		case Mode::rising:
 			Serial.println("mode: rising");
@@ -255,6 +274,11 @@ void flightpin_handler(){
 		return;		// とりあえずなにもしない
 	}
 
+	delayMicroseconds(10);
+	if(digitalRead(pin::flight) == HIGH){
+		return;
+	}
+
 	// TODO: チャタリング検知?
 	detachInterrupt(digitalPinToInterrupt(pin::flight));	// ピン割り込みを解除
 
@@ -305,13 +329,19 @@ void send_hk(){
 	static uint32_t last = 0;
 	uint32_t now = millis();
 	// ミッション部のシーケンス状況送信
-	if((now - last) > 100){
+	if((now - last) > 500){
 		twe.send_extend(id_station, 0x01, static_cast<uint8_t>(global::mode));
 		last = now;
 	}
 }
 
 void send_telemetry(){
+	static uint32_t last = 0;
+	const uint32_t now = millis();
+
+	if((now - last) < 100)
+		return;
+
 	Float32 data;
 	data.time = global::bmp_last_time;
 
