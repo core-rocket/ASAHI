@@ -45,7 +45,6 @@ namespace global {
 	unsigned long last_loop_time = 0;
 
 	Mode mode;
-	uint8_t mode_mission;
 }
 
 // センサデータ
@@ -76,7 +75,7 @@ void timer_handler();	// タイマ割り込みハンドラ
 void send_log(const char *str){
 	twelite.send_simple(id_station, 0x00, str);
 	Serial.println(str);
-	delay(100);
+	delay(10);
 }
 
 // 初期化関数．起動時, リセット時に実行される．
@@ -94,6 +93,9 @@ void setup(){
 	// センサ初期化
 	Wire.begin();
 	mpu.init();
+	mpu.write8(MPU6050::Reg::GYRO_CONFIG, 0x08);
+	mpu.write8(MPU6050::Reg::ACCEL_CONFIG, 0x10);
+
 	MsTimer2::set(timer::init_dt, timer_handler);
 	send_log("sensor finish");
 
@@ -102,7 +104,15 @@ void setup(){
 	if(!SD.begin(SD_CS_PIN)){
 		send_log("SD failed");
 	}
-	file::data = SD.open("DATA.LOG", FILE_WRITE);
+
+	// ログファイルオープン
+	char fname[10];
+	for(int i=0;i<=999;i++){
+		sprintf(fname, "%d.LOG", i);
+		if(!SD.exists(fname))
+			break;
+	}
+	file::data = SD.open(fname, FILE_WRITE);
 	if(!file::data){
 		send_log("fopen failed");
 	}
@@ -171,9 +181,7 @@ void loop(){
 			Serial.println("simple");
 		}else{
 			Serial.println("extend");
-			if(twelite.response_id() == 0x01){	// ミッション部シーケンス状況
-				global::mode_mission = twelite.recv_buf[0];
-			}else if(twelite.response_id() == 0x02){
+			if(twelite.response_id() == 0x04){
 				global::mode = Mode::flight;
 				send_log("flight mode on");
 				MsTimer2::stop();
@@ -181,11 +189,6 @@ void loop(){
 				MsTimer2::start();
 			}
 		}
-	}
-
-	// ミッション部へのコマンド送信
-	if(global::mode == Mode::flight){
-		send_command(0x02);
 	}
 
 	// HKデータ送信
@@ -315,6 +318,7 @@ void send_temperature(const Value16 &temp){
 	}
 }
 
+/*
 void send_command(const uint8_t &cmd){
 	static uint32_t last = 0;
 	uint32_t now = millis();
@@ -323,6 +327,7 @@ void send_command(const uint8_t &cmd){
 	}
 	last = now;
 }
+*/
 
 void timer_handler(){
 	using namespace sensor_data;

@@ -34,6 +34,18 @@ int main(int argc, char **argv){
 
 		if(cmd == "exit"){	// 雑
 			break;
+		}else if(cmd == "unlock"){
+			// 縦解放機構ロック解除コマンド
+			for(size_t i=0;i<3;i++)
+				cmd_queue.push(0x02);
+		}else if(cmd == "lock"){
+			// 縦解放機構ロックコマンド
+			for(size_t i=0;i<3;i++)
+				cmd_queue.push(0x03);
+		}else if(cmd == "on"){
+			// フライトモードONコマンド
+			for(size_t i=0;i<3;i++)
+				cmd_queue.push(0x04);
 		}else if(cmd == "motion" || cmd == "m"){
 			auto acc = latest_acc;
 			auto gyro= latest_gyro;
@@ -41,9 +53,6 @@ int main(int argc, char **argv){
 			print_vec(acc);
 			std::cout << "gyro: ";
 			print_vec(gyro);
-		}else if(cmd == "unlock"){
-			for(size_t i=0;i<3;i++)
-				cmd_queue.push(0x02);
 		}
 	}
 
@@ -69,16 +78,28 @@ void fwrite_vec(std::ofstream &file, const twelite::vec_t &v){
 
 void save_loop(){
 	using namespace twelite;
+	std::ofstream f_log;
 	std::ofstream f_acc, f_gyro, f_bus_temp, f_gps_time, f_gps_pos, f_gps_alt;
+	std::ofstream f_mission_temp, f_pressure, f_altitude;
 
+	f_log.open("log/log.txt", std::ios::app);
 	f_acc.open("log/acc.csv", std::ios::app);
 	f_gyro.open("log/gyro.csv", std::ios::app);
 	f_bus_temp.open("log/bus_temp.csv", std::ios::app);
 	f_gps_time.open("log/gps_time.csv", std::ios::app);
 	f_gps_pos.open("log/gps_pos.csv", std::ios::app);
 	f_gps_alt.open("log/gps_alt.csv", std::ios::app);
+	f_mission_temp.open("log/mission_temp.csv", std::ios::app);
+	f_pressure.open("log/pressure.csv", std::ios::app);
+	f_altitude.open("log/altitude.csv", std::ios::app);
 
 	while(run_flag){
+		for(size_t i=0;i<log.size();i++){
+			const auto &s = log.front();
+			f_log << s << std::endl;
+			log.pop();
+		}
+
 		for(size_t i=0;i<acc.size();i++){
 			const auto &v = acc.front();
 			fwrite_vec(f_acc, v);
@@ -110,6 +131,23 @@ void save_loop(){
 			const auto &a = gps_alt.front();
 			f_gps_alt << a.time << "," << a.x_int << "." << a.x_dec << "," << a.y_int << "." << a.y_dec << std::endl;
 			gps_alt.pop();
+		}
+
+		// mission
+		for(size_t i=0;i<mission_temp.size();i++){
+			const auto &t = mission_temp.front();
+			f_mission_temp << t.time << "," << t.val << std::endl;
+			mission_temp.pop();
+		}
+		for(size_t i=0;i<pressure.size();i++){
+			const auto &p = pressure.front();
+			f_pressure << p.time << "," << p.val << std::endl;
+			pressure.pop();
+		}
+		for(size_t i=0;i<altitude.size();i++){
+			const auto &a = altitude.front();
+			f_altitude << a.time << "," << a.val << std::endl;
+			altitude.pop();
 		}
 //		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}

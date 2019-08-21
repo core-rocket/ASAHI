@@ -2,12 +2,20 @@ var request = new XMLHttpRequest();
 var acc_ctx = document.getElementById('acc-chart').getContext('2d');
 var gyro_ctx= document.getElementById('gyro-chart').getContext('2d');
 var temp_ctx= document.getElementById('temperature-chart').getContext('2d');
+var press_ctx=document.getElementById('pressure-chart').getContext('2d');
+var alt_ctx = document.getElementById('altitude-chart').getContext('2d');
 var gps_ctx = document.getElementById('gps-chart').getContext('2d');
 
 var last_acc_time = 0.0;
 var last_gyro_time= 0.0;
-var last_temp_time= 0.0;
+var last_bus_temp_time= 0.0;
+var last_mission_temp_time = 0.0;
+var last_press_time = 0.0;
+var last_alt_time = 0.0;
 var last_gps_time = 0.0;
+
+var last_bus_temp = 0.0;
+var last_mission_temp = 0.0;
 
 var lat_min	= 0.0;
 var lat_max = 0.0;
@@ -58,18 +66,71 @@ function temp_onrefresh(chart){
 	request.open("GET", "/data/temperature", false);
 	request.send(null);
 	if(request.readyState != 4 || request.status != 200){
-		last_temp_time = 0.0;
+		last_bus_temp_time = last_mission_temp_time = 0.0;
+		return;
+	}
+	var data = JSON.parse(request.responseText);
+
+	var dataset = chart.config.data.datasets;
+	for(var i =0;i<Object.keys(data).length;i++){
+		const client_time = Date.now();
+		if(data[i].bus_time > last_bus_temp_time){
+			last_bus_temp_time = data[i].bus_time;
+			last_bus_temp = data[i].bus_temp;
+			dataset[0].data.push({ x: client_time, y: last_bus_temp });
+		}
+		if(data[i].mission_time > last_mission_temp_time){
+			last_mission_temp_time = data[i].mission_time;
+			last_mission_temp = data[i].mission_temp - 273.15;
+			dataset[1].data.push({ x: client_time, y: last_mission_temp });
+		}
+	}
+	document.getElementById("temperature").innerHTML = "<h4>time: " + last_bus_temp_time + "</h4>" +
+														"<h4>bus: " + last_bus_temp + "</h4>" +
+														"<h4>mission: " + last_mission_temp + "</h4>";
+}
+
+function press_onrefresh(chart){
+	request.open("GET", "/data/pressure", false);
+	request.send(null);
+	if(request.readyState != 4 || request.status != 200){
+		last_press_time = 0.0;
+		return;
+	}
+	var data = JSON.parse(request.responseText);
+
+	var dataset = chart.config.data.datasets;
+	for(var i =0;i<Object.keys(data).length;i++){
+		const client_time = Date.now();
+		if(data[i].time > last_press_time){
+			last_press_time = data[i].time;
+			last_press = data[i].press;
+			dataset[0].data.push({ x: client_time, y: last_press });
+		}
+	}
+	document.getElementById("pressure").innerHTML = "<h4>time: " + last_press_time + "</h4>" +
+													"<h4>pressure: " + last_press + "</h4>";
+}
+
+function alt_onrefresh(chart){
+	request.open("GET", "/data/altitude", false);
+	request.send(null);
+	if(request.readyState != 4 || request.status != 200){
+		last_alt_time = 0.0;
 		return;
 	}
 	var data = JSON.parse(request.responseText);
 	var dataset = chart.config.data.datasets;
-	for(var i =0;i<Object.keys(data).length;i++){
+	for(var i=0;i<Object.keys(data).length;i++){
 		const client_time = Date.now();
-		if(last_temp_time >= data[i].time) continue;
-		last_temp_time = data[i].time;
-		dataset[0].data.push({ x: client_time, y: data[i].bus });
+		if(data[i].time > last_alt_time){
+			last_alt_time = data[i].time;
+			last_alt = data[i].altitude;
+			dataset[0].data.push({ x: client_time, y: last_alt });
+		}
 	}
-	document.getElementById("temperature").innerHTML = "<h4>time: " + last_temp_time + "</h4>";
+	document.getElementById("altitude").innerHTML = "<h4>time: " + last_alt_time + "</h4>" +
+													"<h4>altitude: " + last_alt + "</h4>";
 }
 
 function gps_onrefresh(chart){
@@ -130,7 +191,7 @@ var acc_chart = new Chart(acc_ctx, {
 				type: 'realtime',
 				realtime: {
 					duration: 10000,
-					refresh: 10,
+					refresh: 100,
 					delay: 0,
 					onRefresh: acc_onrefresh
 				}
@@ -171,7 +232,7 @@ var gyro_chart = new Chart(gyro_ctx, {
 				type: 'realtime',
 				realtime: {
 					duration: 10000,
-					refresh: 10,
+					refresh: 100,
 					delay: 0,
 					onRefresh: gyro_onrefresh
 				}
@@ -207,7 +268,7 @@ var temp_chart = new Chart(temp_ctx, {
 				type: 'realtime',
 				realtime: {
 					duration: 10000,
-					refresh: 100,
+					refresh: 500,
 					delay: 0,
 					onRefresh: temp_onrefresh,
 				}
@@ -215,11 +276,73 @@ var temp_chart = new Chart(temp_ctx, {
 			yAxes: [{
 				ticks: {
 					min: 25,
-					max: 50,
+					max: 60,
 				}
 			}]
 		}
 	},
+});
+
+var press_chart = new Chart(press_ctx, {
+	type: 'line',
+	data: {
+		datasets: [{
+			label: "presure",
+			borderColor: 'rgba(200, 0, 0)',
+			fill: false,
+			data: []
+		}]
+	},
+	options: {
+		scales: {
+			xAxes: [{
+				type: 'realtime',
+				realtime: {
+					duration: 10000,
+					refresh: 500,
+					delay: 0,
+					onRefresh: press_onrefresh,
+				}
+			}],
+			yAxes: [{
+				ticks: {
+					min: 900,
+					max: 1500,
+				}
+			}]
+		}
+	}
+});
+
+var alt_chart = new Chart(alt_ctx, {
+	type: 'line',
+	data: {
+		datasets: [{
+			label: "altitude",
+			borderColor: 'rgba(0, 200, 0)',
+			fill: false,
+			data: []
+		}]
+	},
+	options: {
+		scales: {
+			xAxes: [{
+				type: 'realtime',
+				realtime: {
+					duration: 10000,
+					refresh: 100,
+					delay: 0,
+					onRefresh: alt_onrefresh,
+				}
+			}],
+			yAxes: [{
+				ticks: {
+					min: 0,
+					max: 1000
+				}
+			}]
+		}
+	}
 });
 
 var gps_chart = new Chart(gps_ctx, {
@@ -254,4 +377,4 @@ var gps_chart = new Chart(gps_ctx, {
 	},
 });
 
-setInterval("gps_onrefresh(gps_chart)", 100);
+setInterval("gps_onrefresh(gps_chart)", 1000);

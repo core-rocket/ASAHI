@@ -5,21 +5,47 @@
 		<script type="text/javascript" src="/js/lib/moment-with-locales.min.js"></script>
 		<script type="text/javascript" src="/js/lib/Chart.min.js"></script>
 		<script type="text/javascript" src="/js/lib/chartjs-plugin-streaming.min.js"></script>
+<style type="text/css">
+		.graph {
+			display: inline-block;
+			vertical-align: middle;
+		}
+		</style>
 	</head>
 	<body>
 		<h1>telemetry data</h1>
 
-		<h2>acc data</h2>
-		<div id="acc_time"></div>
-		<canvas id="acc-chart"></canvas>
+		<div class="graph">
+			<h2>acc data</h2>
+			<div id="acc_time"></div>
+			<canvas id="acc-chart" width=800></canvas>
+		</div>
 
-		<h2>gyro data</h2>
-		<div id="gyro_time"></div>
-		<canvas id="gyro-chart"></canvas>
+		<div class="graph">
+			<h2>gyro data</h2>
+			<div id="gyro_time"></div>
+			<canvas id="gyro-chart" width="800"></canvas>
+		</div>
 
-		<h2>temperature</h2>
-		<div id="temperature"></div>
-		<canvas id="temperature-chart"></canvas>
+		<br>
+
+		<div class="graph">
+			<h2>temperature</h2>
+			<div id="temperature"></div>
+			<canvas id="temperature-chart" width=400></canvas>
+		</div>
+
+		<div class="graph">
+			<h2>pressure</h2>
+			<div id="pressure"></div>
+			<canvas id="pressure-chart" width=400></canvas>
+		</div>
+
+		<div class="graph">
+			<h2>altitude</h2>
+			<div id="altitude"></div>
+			<canvas id="altitude-chart" width=800></canvas>
+		</div>
 
 		<h2>GPS data</h2>
 		<div id="gps_info"></div>

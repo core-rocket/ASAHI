@@ -17,13 +17,20 @@ namespace twelite {
 	vec_t latest_acc = {};
 	vec_t latest_gyro= {};
 	double_t latest_bus_temp = {};
+	double_t latest_mission_temp = {};
+	double_t latest_pressure = {};
+	double_t latest_altitude = {};
 	GPS_time latest_gps_time = {};
 	GPS_vec2 latest_gps_pos = {};
 	GPS_vec2 latest_gps_alt = {};
 
 	std::queue<vec_t> acc, gyro;
 	std::queue<uint8_t> cmd_queue;
+	std::queue<std::string> log;
 	std::queue<double_t> bus_temp;
+	std::queue<double_t> mission_temp;
+	std::queue<double_t> pressure;
+	std::queue<double_t> altitude;
 	std::queue<GPS_time> gps_time;
 	std::queue<GPS_vec2> gps_pos;
 	std::queue<GPS_vec2> gps_alt;
@@ -40,6 +47,7 @@ void twelite::loop(){
 		if(!cmd_queue.empty()){
 			std::cout << "sending command ... \t";
 			twe->send_extend(id_bus, cmd_queue.front(), "A");
+			twe->send_extend(id_mission, cmd_queue.front(), "A");
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			cmd_queue.pop();
 		}
@@ -69,11 +77,15 @@ void twelite::loop(){
 }
 
 void get_string(const TWE_Lite *twe){
+	std::string s = "str: ";
 	std::cout << "string: \"";
 	for(size_t i=0;i<twe->get_length();i++){
 		std::cout << static_cast<char>(twe->recv_buf[i]);
+		s += twe->recv_buf[i];
 	}
 	std::cout << "\"" << std::endl;
+
+	twelite::log.push(s);
 }
 
 void get_acc(const TWE_Lite *twe){
@@ -87,7 +99,7 @@ void get_acc(const TWE_Lite *twe){
 
 	float v[3];
 	for(int i=0;i<3;i++)
-		v[i] = static_cast<float>(acc->raw[i]) / 16384.0;
+		v[i] = static_cast<float>(acc->raw[i]) / 4096.0; //16384.0;
 
 	twelite::latest_acc = {
 		t,
@@ -109,7 +121,7 @@ void get_gyro(const TWE_Lite *twe){
 
 	float v[3];
 	for(int i=0;i<3;i++)
-		v[i] = static_cast<float>(gyro->raw[i]) / 131.0;
+		v[i] = static_cast<float>(gyro->raw[i]) / 65.5; //131.0;
 
 	twelite::latest_gyro = {
 		t,
@@ -133,6 +145,54 @@ void get_bus_temp(const TWE_Lite *twe){
 	};
 	twelite::bus_temp.push(twelite::latest_bus_temp);
 //	std::cout << "bus temperature: " << val << std::endl;
+}
+
+void get_mission_temp(const TWE_Lite *twe){
+	auto *temp = twe->get_data<Float32>();
+	if(temp == nullptr)
+		return;
+
+	float time = static_cast<float>(temp->time) / 1000.0f;
+	double val = static_cast<double>(temp->value);
+	twelite::latest_mission_temp = {
+		time,
+		val,
+	};
+	twelite::mission_temp.push(twelite::latest_mission_temp);
+
+//	std::cout << "mission temp = " << val << std::endl;
+}
+
+void get_pressure(const TWE_Lite *twe){
+	auto *press = twe->get_data<Float32>();
+	if(press == nullptr)
+		return;
+
+	float time = static_cast<float>(press->time) / 1000.0f;
+	double val = static_cast<double>(press->value);
+	twelite::latest_pressure = {
+		time,
+		val,
+	};
+	twelite::pressure.push(twelite::latest_pressure);
+
+//	std::cout << "mission pressure = " << val << std::endl;
+}
+
+void get_altitude(const TWE_Lite *twe){
+	auto *alt = twe->get_data<Float32>();
+	if(alt == nullptr)
+		return;
+
+	float time = static_cast<float>(alt->time) / 1000.0f;
+	double val = static_cast<double>(alt->value);
+	twelite::latest_altitude = {
+		time,
+		val,
+	};
+	twelite::altitude.push(twelite::latest_altitude);
+
+//	std::cout << "mission altitude = " << val << std::endl;
 }
 
 void get_gps(const TWE_Lite *twe){
@@ -202,6 +262,15 @@ void parse_simple(const TWE_Lite *twe){
 		case 0x03:	// 水密部温度
 			get_bus_temp(twe);
 			break;
+		case 0x04:	// 気温
+			get_mission_temp(twe);
+			break;
+		case 0x05:	// 気圧
+			get_pressure(twe);
+			break;
+		case 0x06:	// 高度
+			get_altitude(twe);
+			break;
 		case 0x07:
 		case 0x08:
 		case 0x09:
@@ -217,20 +286,35 @@ void parse_simple(const TWE_Lite *twe){
 }
 
 void parse_extend(const TWE_Lite *twe){
+	std::string s = "ex: ";
 //	std::cout << "parse_extend("
 //		<< static_cast<uint32_t>(twe->response_id())
 //		<< ")"
 //		<< std::endl;
 	switch(twe->response_id()){
 		case 0x00:	// bus status
+			s += "status(bus) = ";
+			s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
 			std::cout
 				<< "bus status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
 			break;
+		case 0x01:
+			s += "status(mission) = ";
+			s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
+			std::cout
+				<< "mission status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
+			break;
 		default:
+			s += "unknown: response_id=";
+			s += std::to_string(static_cast<uint32_t>(twe->response_id()));
+			s += ", length=";
+			s += std::to_string(twe->get_length());
 			std::cout
 				<< "unknown type data(extend format)" << std::endl
 				<< "\tresponse_id = 0x" << std::hex << static_cast<uint32_t>(twe->response_id()) << std::endl
 				<< "\tlength = " << std::dec << twe->get_length() << std::endl;
 			break;
 	}
+
+	twelite::log.push(s);
 }

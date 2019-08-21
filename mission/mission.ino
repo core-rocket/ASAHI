@@ -1,13 +1,14 @@
-#include <MsTimer2.h>					// タイマー
+//#include <MsTimer2.h>					// タイマー
 #include <Wire.h>						// i2c
 #include <Adafruit_BMP280.h>			// BMP280ライブラリ
-#include <Servo.h>						// サーボ
+//#include <Servo.h>						// サーボ
+#include <VarSpeedServo.h>
 
 #include "../TWE-Lite/TWE-Lite.hpp"		// TWE-Lite
 #include "../telemetry.hpp"
 
 // 本番時はこの下の行をコメントアウトすること！！！！
-#define BBM
+//#define BBM
 
 #ifdef BBM		// BBM試験用パラメータ
 
@@ -78,7 +79,7 @@ namespace sensor {
 	Adafruit_BMP280			bmp;	// BMP280
 }
 
-Servo		servo;
+VarSpeedServo		servo;
 TWE_Lite	twe(4, 3, 38400);
 
 // 関数
@@ -86,8 +87,14 @@ void init_led(const size_t pin);// LED初期設定
 void flightpin_handler();		// フライトピンの割り込みハンドラ(離床判定)
 void timer_handler();			// タイマ割り込み関数
 void update_altitude();			// 高度を更新する
+void send_hk();					// HKデータ送信
 void send_telemetry();			// テレメトリ送信(toバス部)
 void error();					// エラー(内蔵LED点滅)
+
+void send_log(const char *str){
+	twe.send_simple(id_station, 0x00, str);
+	Serial.println(str);
+}
 
 void setup(){
 	global::launch_time = millis();
@@ -103,7 +110,7 @@ void setup(){
 		error();
 
 	// タイマ割り込み設定
-	MsTimer2::set(1000 / BMP280_SAMPLING_RATE, timer_handler);
+//	MsTimer2::set(1000 / BMP280_SAMPLING_RATE, timer_handler);
 
 	// フライトピン設定
 	pinMode(pin::flight, INPUT_PULLUP);
@@ -112,18 +119,27 @@ void setup(){
 	pinMode(pin::nichrome, OUTPUT);
 	digitalWrite(pin::nichrome, LOW);
 
-	// サーボ初期化
+	// サーボ初期化(ロック時0, 解放時60)
 	servo.attach(pin::servo);
-	servo.write(75);
-	delay(300);
-	servo.detach();
+	servo.write(0, 100, true);				// なんらかの要因でリセットしても解放しない
 
 	// TWE-Lite初期化
 	twe.init();
 
 	// 割り込み有効化
-	MsTimer2::start();
+//	MsTimer2::start();
 	attachInterrupt(digitalPinToInterrupt(pin::flight), flightpin_handler, CHANGE);
+
+	send_log("mission: setup end");
+}
+
+void timerrrrrrrrrr(){
+	static uint32_t last = 0;
+	const uint32_t now = millis();
+	if((now - last) > (1000 / BMP280_SAMPLING_RATE)){
+		timer_handler();
+		last = now;
+	}
 }
 
 void loop(){
@@ -136,17 +152,33 @@ void loop(){
 
 	switch(global::mode){
 		case Mode::standby:
-			Serial.println("mode: standby");
+			send_log("missin: standby");
 			delay(300);
 			if(twe.try_recv(100)){
 				Serial.println("recv");
-				if(twe.from_id() != id_bus)
+				if(twe.from_id() != id_station)
 					break;
 				if(twe.is_extended()){
 					// コマンド
-					if(twe.response_id() == 0x02){		// フライトモード移行
-						global::mode = Mode::flight;
-						Serial.println("flight mode on");
+					//if(twe.response_id() == 0x04){		// フライトモード移行
+					//	global::mode = Mode::flight;
+					//	Serial.println("flight mode on");
+					//	servo.write(0, 100, true);
+					//}
+
+					switch(twe.response_id()){
+						case 0x02:				// 縦解放機構ロック解除
+							send_log("mission: unlock");
+							servo.write(60, 100, true);
+							break;
+						case 0x03:				// 縦解放機構ロック
+							send_log("mission: lock");
+							servo.write(0, 100, true);
+							break;
+						case 0x04:				// フライトモードON
+							send_log("mission: flight mode on");
+							global::mode = Mode::flight;
+							break;
 					}
 				}
 			}
@@ -175,15 +207,12 @@ void loop(){
 			// 開傘判定
 			// 5回連続で下降 or タイムアウト
 			if(global::descent_count >= 4 || time > TIMEOUT_PARACHUTE){
-				Serial.println("do parachute!!!!");
+				send_log("do parachute!!!!");
 
-				servo.attach(pin::servo);
-				servo.write(15);
-				delay(300);
-				servo.detach();
+				servo.write(60, 100, true);
 
 				global::mode = Mode::leafing;
-				Serial.println("mode parachute -> leafing");
+				send_log("mode parachute -> leafing");
 			}
 
 			break;
@@ -200,6 +229,9 @@ void loop(){
 			break;
 	}
 
+	timerrrrrrrrrr();
+
+	send_hk();
 	send_telemetry();
 
 	Serial.print("launch=");
@@ -236,10 +268,10 @@ void timer_handler(){
 	global::bmp_last_time = millis();
 
 	// i2cを使うので一時的に割り込み許可
-	interrupts();
+//	interrupts();
 	global::temp_buf[global::bmp_count]		= bmp.readTemperature();	// 気温(℃ )
 	global::press_buf[global::bmp_count]	= bmp.readPressure();		// 気圧(Pa)
-	noInterrupts();
+//	noInterrupts();
 	global::bmp_count++;
 	if(global::bmp_count == BMP280_BUF_SIZE)
 		global::bmp_count = 0;
@@ -269,32 +301,34 @@ void update_altitude(){
 	global::altitude = ((pow(p_0/p, 1/5.257) - 1)*t) / 0.0065;
 }
 
+void send_hk(){
+	static uint32_t last = 0;
+	uint32_t now = millis();
+	// ミッション部のシーケンス状況送信
+	if((now - last) > 100){
+		twe.send_extend(id_station, 0x01, static_cast<uint8_t>(global::mode));
+		last = now;
+	}
+}
+
 void send_telemetry(){
 	Float32 data;
 	data.time = global::bmp_last_time;
 
-	//Serial.println("send telem");
-
 	// 気温(K)
 	data.value = global::temperature;
-	twe.send_simple(id_bus, 0x04, data);
+	twe.send_simple(id_station, 0x04, data);
 	delay(10);
 
 	// 気圧(hPa)
 	data.value = global::pressure;
-	twe.send_simple(id_bus, 0x05, data);
+	twe.send_simple(id_station, 0x05, data);
 	delay(10);
 
 	// 高度(m)
 	data.value = global::altitude;
-	twe.send_simple(id_bus, 0x06, data);
+	twe.send_simple(id_station, 0x06, data);
 	delay(10);
-
-//	if(twe.try_recv(100)){
-//		Serial.println("recv");
-//		if(twe.is_response())
-//			Serial.println("response");
-//	}
 }
 
 void error(){
