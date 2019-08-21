@@ -339,10 +339,10 @@ void timer_handler(){
 	auto m = mpu.get_data();
 	noInterrupts();	// 割り込み禁止
 
-	if(count % 5 == 0){
+//	if(count % 5 == 0){
 		motion_time.push(t);
 		motion.push(m);
-	}
+//	}
 
 	count++;
 }
