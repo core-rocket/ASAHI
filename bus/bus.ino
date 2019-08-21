@@ -75,7 +75,7 @@ void timer_handler();	// タイマ割り込みハンドラ
 void send_log(const char *str){
 	twelite.send_simple(id_station, 0x00, str);
 	Serial.println(str);
-	delay(100);
+	delay(10);
 }
 
 // 初期化関数．起動時, リセット時に実行される．

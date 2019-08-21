@@ -91,6 +91,11 @@ void send_hk();					// HKデータ送信
 void send_telemetry();			// テレメトリ送信(toバス部)
 void error();					// エラー(内蔵LED点滅)
 
+void send_log(const char *str){
+	twe.send_simple(id_station, 0x00, str);
+	Serial.println(str);
+}
+
 void setup(){
 	global::launch_time = millis();
 	global::mode = Mode::standby;
@@ -124,6 +129,8 @@ void setup(){
 	// 割り込み有効化
 //	MsTimer2::start();
 	attachInterrupt(digitalPinToInterrupt(pin::flight), flightpin_handler, CHANGE);
+
+	send_log("mission: setup end");
 }
 
 void timerrrrrrrrrr(){
@@ -145,7 +152,7 @@ void loop(){
 
 	switch(global::mode){
 		case Mode::standby:
-			Serial.println("mode: standby");
+			send_log("missin: standby");
 			delay(300);
 			if(twe.try_recv(100)){
 				Serial.println("recv");
@@ -161,12 +168,15 @@ void loop(){
 
 					switch(twe.response_id()){
 						case 0x02:				// 縦解放機構ロック解除
+							send_log("mission: unlock");
 							servo.write(60, 100, true);
 							break;
 						case 0x03:				// 縦解放機構ロック
+							send_log("mission: lock");
 							servo.write(0, 100, true);
 							break;
 						case 0x04:				// フライトモードON
+							send_log("mission: flight mode on");
 							global::mode = Mode::flight;
 							break;
 					}
@@ -197,12 +207,12 @@ void loop(){
 			// 開傘判定
 			// 5回連続で下降 or タイムアウト
 			if(global::descent_count >= 4 || time > TIMEOUT_PARACHUTE){
-				Serial.println("do parachute!!!!");
+				send_log("do parachute!!!!");
 
 				servo.write(60, 100, true);
 
 				global::mode = Mode::leafing;
-				Serial.println("mode parachute -> leafing");
+				send_log("mode parachute -> leafing");
 			}
 
 			break;
