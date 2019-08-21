@@ -114,9 +114,9 @@ void setup(){
 	pinMode(pin::nichrome, OUTPUT);
 	digitalWrite(pin::nichrome, LOW);
 
-	// サーボ初期化
+	// サーボ初期化(ロック時0, 解放時60)
 	servo.attach(pin::servo);
-	servo.write(60, 100, true);
+	servo.write(0, 100, true);				// なんらかの要因でリセットしても解放しない
 
 	// TWE-Lite初期化
 	twe.init();
@@ -153,10 +153,22 @@ void loop(){
 					break;
 				if(twe.is_extended()){
 					// コマンド
-					if(twe.response_id() == 0x02){		// フライトモード移行
-						global::mode = Mode::flight;
-						Serial.println("flight mode on");
-						servo.write(0, 100, true);
+					//if(twe.response_id() == 0x04){		// フライトモード移行
+					//	global::mode = Mode::flight;
+					//	Serial.println("flight mode on");
+					//	servo.write(0, 100, true);
+					//}
+
+					switch(twe.response_id()){
+						case 0x02:				// 縦解放機構ロック解除
+							servo.write(60, 100, true);
+							break;
+						case 0x03:				// 縦解放機構ロック
+							servo.write(0, 100, true);
+							break;
+						case 0x04:				// フライトモードON
+							global::mode = Mode::flight;
+							break;
 					}
 				}
 			}

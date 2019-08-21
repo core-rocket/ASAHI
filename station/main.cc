@@ -34,6 +34,18 @@ int main(int argc, char **argv){
 
 		if(cmd == "exit"){	// 雑
 			break;
+		}else if(cmd == "unlock"){
+			// 縦解放機構ロック解除コマンド
+			for(size_t i=0;i<3;i++)
+				cmd_queue.push(0x02);
+		}else if(cmd == "lock"){
+			// 縦解放機構ロックコマンド
+			for(size_t i=0;i<3;i++)
+				cmd_queue.push(0x03);
+		}else if(cmd == "on"){
+			// フライトモードONコマンド
+			for(size_t i=0;i<3;i++)
+				cmd_queue.push(0x04);
 		}else if(cmd == "motion" || cmd == "m"){
 			auto acc = latest_acc;
 			auto gyro= latest_gyro;
@@ -41,9 +53,6 @@ int main(int argc, char **argv){
 			print_vec(acc);
 			std::cout << "gyro: ";
 			print_vec(gyro);
-		}else if(cmd == "unlock"){
-			for(size_t i=0;i<3;i++)
-				cmd_queue.push(0x02);
 		}
 	}
 

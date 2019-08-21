@@ -170,7 +170,7 @@ void loop(){
 			Serial.println("simple");
 		}else{
 			Serial.println("extend");
-			if(twelite.response_id() == 0x02){
+			if(twelite.response_id() == 0x04){
 				global::mode = Mode::flight;
 				send_log("flight mode on");
 				MsTimer2::stop();
