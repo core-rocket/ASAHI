@@ -30,7 +30,7 @@ int main(int argc, char **argv){
 				size = sizeof(Vec16_t);
 				break;
 			default:
-				printf("unknwon type\n");
+				printf("unknwon type: %d\n", (int)type);
 				break;
 		}
 		flag = (fread(buf, 1, size, fp) == size);

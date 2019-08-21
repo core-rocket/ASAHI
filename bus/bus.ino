@@ -104,7 +104,15 @@ void setup(){
 	if(!SD.begin(SD_CS_PIN)){
 		send_log("SD failed");
 	}
-	file::data = SD.open("DATA.LOG", FILE_WRITE);
+
+	// ログファイルオープン
+	char fname[10];
+	for(int i=0;i<=999;i++){
+		sprintf(fname, "%d.LOG", i);
+		if(!SD.exists(fname))
+			break;
+	}
+	file::data = SD.open(fname, FILE_WRITE);
 	if(!file::data){
 		send_log("fopen failed");
 	}
