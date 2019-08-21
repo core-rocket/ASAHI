@@ -206,8 +206,8 @@ void get_gps(const TWE_Lite *twe){
 				auto *time = twe->get_data<GPS_time>();
 				if(time == nullptr)
 					return;
-				std::cout << "UTC: "
-					<< time->time_int << "." << time->time_dec << std::endl;
+			//	std::cout << "UTC: "
+			//		<< time->time_int << "." << time->time_dec << std::endl;
 				twelite::latest_gps_time = {
 					time->time,
 					time->time_int,
@@ -222,9 +222,9 @@ void get_gps(const TWE_Lite *twe){
 				auto *pos = twe->get_data<GPS_vec2>();
 				if(pos == nullptr)
 					return;
-				std::cout
-					<< "lat = " << pos->x_int << "." << pos->x_dec
-					<< ", lng = " << pos->y_int << "." << pos->y_dec << std::endl;
+			//	std::cout
+			//		<< "lat = " << pos->x_int << "." << pos->x_dec
+			//		<< ", lng = " << pos->y_int << "." << pos->y_dec << std::endl;
 				twelite::latest_gps_pos = {
 					pos->time,
 					pos->x_int, pos->x_dec,
@@ -299,26 +299,28 @@ void parse_extend(const TWE_Lite *twe){
 		case 0x00:	// bus status
 			s += "status(bus) = ";
 			s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
-			std::cout
-				<< "bus status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
+		//	std::cout
+		//		<< "bus status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
 			break;
 		case 0x01:
 			s += "status(mission) = ";
 			s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
-			std::cout
-				<< "mission status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
+		//	std::cout
+		//		<< "mission status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
 			break;
 		default:
 			s += "unknown: response_id=";
 			s += std::to_string(static_cast<uint32_t>(twe->response_id()));
 			s += ", length=";
 			s += std::to_string(twe->get_length());
-			std::cout
-				<< "unknown type data(extend format)" << std::endl
-				<< "\tresponse_id = 0x" << std::hex << static_cast<uint32_t>(twe->response_id()) << std::endl
-				<< "\tlength = " << std::dec << twe->get_length() << std::endl;
+		//	std::cout
+		//		<< "unknown type data(extend format)" << std::endl
+		//		<< "\tresponse_id = 0x" << std::hex << static_cast<uint32_t>(twe->response_id()) << std::endl
+		//		<< "\tlength = " << std::dec << twe->get_length() << std::endl;
 			break;
 	}
+
+	std::cout << s << std::endl;
 
 	twelite::log.push(s);
 }

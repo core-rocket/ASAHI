@@ -152,7 +152,7 @@ void loop(){
 
 	switch(global::mode){
 		case Mode::standby:
-			send_log("missin: standby");
+			send_log("mission: standby");
 			delay(300);
 			if(twe.try_recv(100)){
 				Serial.println("recv");
