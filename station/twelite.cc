@@ -297,13 +297,13 @@ void parse_extend(const TWE_Lite *twe){
 	s += ", ";
 	switch(twe->response_id()){
 		case 0x00:	// bus status
-			s += "status(bus) = ";
+			s += "bus: ";
 			s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
 		//	std::cout
 		//		<< "bus status = " << std::dec << static_cast<uint32_t>(twe->recv_buf[0]) << std::endl;
 			break;
 		case 0x01:
-			s += "status(mission) = ";
+			s += "mission: ";
 			//s += std::to_string(static_cast<uint32_t>(twe->recv_buf[0]));
 			switch(twe->recv_buf[0]){
 			case 0x00: s += "standby"; break;
