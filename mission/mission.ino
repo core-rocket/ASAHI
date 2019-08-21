@@ -28,8 +28,8 @@
 // 離床からの経過時刻を示す)
 #define TIME_RISING				(6.0  * 1000)		// 離床後開傘判定を開始する時間
 
-#define TIMEOUT_PARACHUTE		(12.5 * 1000)		// 開傘を強制的に行う時間
-#define TIMEOUT_LEAFING			(16.0 * 1000)		// リーフィングを強制的に行う時間
+#define TIMEOUT_PARACHUTE		(12.53 * 1000)		// 開傘を強制的に行う時間
+#define TIMEOUT_LEAFING			(25.6 * 1000)		// リーフィングを強制的に行う時間
 
 #define BMP280_SAMPLING_RATE	100					// BMP280のサンプリングレート(Hz)
 #define BMP280_BUF_SIZE			5					// BMP280のバッファサイズ．移動平均のnでもある
