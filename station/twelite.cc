@@ -94,7 +94,7 @@ void get_acc(const TWE_Lite *twe){
 
 	float v[3];
 	for(int i=0;i<3;i++)
-		v[i] = static_cast<float>(acc->raw[i]) / 16384.0;
+		v[i] = static_cast<float>(acc->raw[i]) / 4096.0; //16384.0;
 
 	twelite::latest_acc = {
 		t,
@@ -116,7 +116,7 @@ void get_gyro(const TWE_Lite *twe){
 
 	float v[3];
 	for(int i=0;i<3;i++)
-		v[i] = static_cast<float>(gyro->raw[i]) / 131.0;
+		v[i] = static_cast<float>(gyro->raw[i]) / 65.5; //131.0;
 
 	twelite::latest_gyro = {
 		t,

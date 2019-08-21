@@ -93,6 +93,9 @@ void setup(){
 	// センサ初期化
 	Wire.begin();
 	mpu.init();
+	mpu.write8(MPU6050::Reg::GYRO_CONFIG, 0x08);
+	mpu.write8(MPU6050::Reg::ACCEL_CONFIG, 0x10);
+
 	MsTimer2::set(timer::init_dt, timer_handler);
 	send_log("sensor finish");
 
