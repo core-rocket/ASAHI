@@ -1,7 +1,8 @@
 //#include <MsTimer2.h>					// タイマー
 #include <Wire.h>						// i2c
 #include <Adafruit_BMP280.h>			// BMP280ライブラリ
-#include <Servo.h>						// サーボ
+//#include <Servo.h>						// サーボ
+#include <VarSpeedServo.h>
 
 #include "../TWE-Lite/TWE-Lite.hpp"		// TWE-Lite
 #include "../telemetry.hpp"
@@ -78,10 +79,8 @@ namespace sensor {
 	Adafruit_BMP280			bmp;	// BMP280
 }
 
-Servo		servo;
+VarSpeedServo		servo;
 TWE_Lite	twe(4, 3, 38400);
-
-size_t servo_num = 0;
 
 // 関数
 void init_led(const size_t pin);// LED初期設定
@@ -117,7 +116,7 @@ void setup(){
 
 	// サーボ初期化
 	servo.attach(pin::servo);
-	servo_num = 60;
+	servo.write(60, 100, true);
 
 	// TWE-Lite初期化
 	twe.init();
@@ -136,15 +135,6 @@ void timerrrrrrrrrr(){
 	}
 }
 
-void do_servo(){
-	static uint32_t last = 0;
-	const uint32_t now = millis();
-	if((now - last) > 800){
-		servo.write(servo_num);
-		last = now;
-	}
-}
-
 void loop(){
 	const auto& launch_time = global::launch_time;
 	const auto time = millis() - launch_time;	// 離床からの時間
@@ -152,8 +142,6 @@ void loop(){
 	update_altitude();							// 高度を更新する
 	const auto& last_altitude = global::last_altitude;
 	const auto& altitude = global::altitude;
-
-	do_servo();
 
 	switch(global::mode){
 		case Mode::standby:
@@ -168,6 +156,7 @@ void loop(){
 					if(twe.response_id() == 0x02){		// フライトモード移行
 						global::mode = Mode::flight;
 						Serial.println("flight mode on");
+						servo.write(0, 100, true);
 					}
 				}
 			}
@@ -198,11 +187,7 @@ void loop(){
 			if(global::descent_count >= 4 || time > TIMEOUT_PARACHUTE){
 				Serial.println("do parachute!!!!");
 
-				servo_num = 0;
-			//	servo.attach(pin::servo);
-			//	servo.write(15);
-			//	delay(300);
-			//	servo.detach();
+				servo.write(60, 100, true);
 
 				global::mode = Mode::leafing;
 				Serial.println("mode parachute -> leafing");
