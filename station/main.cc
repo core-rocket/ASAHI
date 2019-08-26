@@ -94,11 +94,11 @@ void save_loop(){
 	f_altitude.open("log/altitude.csv", std::ios::app);
 
 	while(run_flag){
-		for(size_t i=0;i<log.size();i++){
-			const auto &s = log.front();
-			f_log << s << std::endl;
-			log.pop();
-		}
+//		for(size_t i=0;i<log.size();i++){
+//			const auto &s = log.front();
+//			f_log << s << std::endl;
+//			log.pop();
+//		}
 
 		for(size_t i=0;i<acc.size();i++){
 			const auto &v = acc.front();
