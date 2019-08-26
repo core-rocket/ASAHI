@@ -8,13 +8,16 @@ log.csv: parse_log
 
 csv: log.csv
 
-all: acc gyro
+all: acc gyro temp
 
 acc: log.csv
 	cat log.csv | grep "acc" > acc.csv
 
 gyro: log.csv
 	cat log.csv | grep "gyro" > gyro.csv
+
+temp: log.csv
+	cat log.csv | grep "temperature" > temp.csv
 
 clean:
 	rm -f *.csv *.png

@@ -19,11 +19,10 @@ int main(int argc, char **argv){
 	size_t size= 0;
 	bool flag = true;
 
-	uint32_t last_acc_time = 0.0;
-	uint32_t last_gyro_time;
-	uint32_t acc_dt = 0.0;
-	uint32_t gyro_dt= 0.0;
+	uint32_t last_acc_time = 0.0, last_gyro_time = 0.0, last_temp_time = 0.0;
+	uint32_t acc_dt = 0.0, gyro_dt= 0.0, temp_dt = 0.0;
 	Vec16_t *acc, *gyro;
+	Value16 *temp;
 
 	while(true){
 		flag = (fread(&type, 1, 1, fp) == 1);
@@ -65,6 +64,13 @@ int main(int argc, char **argv){
 				last_gyro_time = gyro->time;
 				printf("gyro, %f, %u, ", static_cast<float>(gyro->time)/1000.0f, gyro_dt);
 				printf("%f, %f, %f\n", static_cast<float>(gyro->x)/GYRO_LSB, static_cast<float>(gyro->y)/GYRO_LSB, static_cast<float>(gyro->z)/GYRO_LSB);
+				break;
+			case 0x03:
+				temp = reinterpret_cast<Value16*>(buf);
+				temp_dt = temp->time;
+				last_temp_time = temp->time;
+				printf("temperature, %f, %u, ", static_cast<float>(temp->time)/1000.0f, temp_dt);
+				printf("%f\n", (static_cast<float>(temp->val)+12412.0)/340.0);
 				break;
 		}
 	}
