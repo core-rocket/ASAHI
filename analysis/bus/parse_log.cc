@@ -3,6 +3,9 @@
 #include <cstdint>
 #include "../..//telemetry.hpp"
 
+#define ACC_LSB		4096.0
+#define GYRO_LSB	65.5
+
 int main(int argc, char **argv){
 	FILE *fp = std::fopen(argv[1], "rb");
 	if(fp == nullptr){
@@ -17,7 +20,9 @@ int main(int argc, char **argv){
 	bool flag = true;
 
 	uint32_t last_acc_time = 0.0;
+	uint32_t last_gyro_time;
 	uint32_t acc_dt = 0.0;
+	uint32_t gyro_dt= 0.0;
 	Vec16_t *acc, *gyro;
 
 	while(true){
@@ -28,6 +33,16 @@ int main(int argc, char **argv){
 			case 0x01:
 			case 0x02:
 				size = sizeof(Vec16_t);
+				break;
+			case 0x03:
+				size = sizeof(Value16);
+				break;
+			case 0x08:
+				size = sizeof(GPS_time);
+				break;
+			case 0x09:
+			case 0x0a:
+				size = sizeof(GPS_vec2);
 				break;
 			default:
 				printf("unknwon type: %d\n", (int)type);
@@ -41,9 +56,15 @@ int main(int argc, char **argv){
 				acc = reinterpret_cast<Vec16_t*>(buf);
 				acc_dt = acc->time - last_acc_time;
 				last_acc_time = acc->time;
-				printf("acc: ");
-				printf("dt=%u", acc_dt);
-				printf(", time=%u, x=%f, y=%f, z=%f\n", acc->time, static_cast<float>(acc->x)/16384.0, static_cast<float>(acc->y)/16384.0, static_cast<float>(acc->z)/16384.0);
+				printf("acc, %f, %u, ", static_cast<float>(acc->time)/1000.0f, acc_dt);
+				printf("%f, %f, %f\n", static_cast<float>(acc->x)/ACC_LSB, static_cast<float>(acc->y)/ACC_LSB, static_cast<float>(acc->z)/ACC_LSB);
+				break;
+			case 0x02:
+				gyro = reinterpret_cast<Vec16_t*>(buf);
+				gyro_dt= gyro->time - last_gyro_time;
+				last_gyro_time = gyro->time;
+				printf("gyro, %f, %u, ", static_cast<float>(gyro->time)/1000.0f, gyro_dt);
+				printf("%f, %f, %f\n", static_cast<float>(gyro->x)/GYRO_LSB, static_cast<float>(gyro->y)/GYRO_LSB, static_cast<float>(gyro->z)/GYRO_LSB);
 				break;
 		}
 	}
