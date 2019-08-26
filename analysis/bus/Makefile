@@ -1,5 +1,4 @@
 LOG	:= 4.LOG
-LAST:= 30
 
 parse_log: parse_log.cc
 	$(CXX) -o $@ $^
@@ -13,11 +12,9 @@ all: acc gyro
 
 acc: log.csv
 	cat log.csv | grep "acc" > acc.csv
-	cat acc.csv | tail -n $(LAST) > acc_last.csv
 
 gyro: log.csv
 	cat log.csv | grep "gyro" > gyro.csv
-	cat gyro.csv| tail -n $(LAST) > gyro_last.csv
 
 clean:
 	rm -f *.csv *.png

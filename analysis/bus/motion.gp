@@ -2,8 +2,8 @@ set datafile separator ","
 set terminal png
 set out "motion_last.png"
 
-acc="< cat acc_last.csv"
-gyro="< cat gyro_last.csv"
+acc="< cat acc.csv | tail -n 50"
+gyro="< cat gyro.csv | tail -n 50"
 
 set multiplot layout 2,1
 set xlabel "time(sec)"
