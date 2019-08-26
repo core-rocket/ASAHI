@@ -1,5 +1,5 @@
 LOG	:= 4.LOG
-LAST:= 25
+LAST:= 30
 
 parse_log: parse_log.cc
 	$(CXX) -o $@ $^
